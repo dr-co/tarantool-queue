@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.28) nowtaxi; urgency=medium
+
+  * the package can use tarantool-lts as depends.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Sun, 01 May 2016 11:44:06 +0300
+
 dr-tarantool-queue (0.27) nowtaxi; urgency=low
 
   * restart_check works only if restart defined, too.

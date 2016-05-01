@@ -32,7 +32,7 @@ Architecture: all
 Section: database
 Suggests: libdr-tarantoolqueue-perl
 Depends: ${misc:Depends}, ${perl:Depends},
- tarantool (>= 1.4.8+20130110-1)
+ tarantool (>= 1.4.8+20130110-1) | tarantool-lts
 Homepage: https://github.com/mailru/tarantool-queue/
 Description: queue components for tarantool
  The package contains init.lua and tarantool.cfg to build queue daemon
