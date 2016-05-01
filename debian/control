@@ -10,7 +10,7 @@ Build-Depends-Indep: libcoro-perl,
  libmouse-perl,
  libcoro-perl,
  perl,
- tarantool (>= 1.4.8+20130110)
+ tarantool-lts | tarantool (>= 1.4.8+20130110)
 Standards-Version: 3.9.3
 
 Package: libdr-tarantoolqueue-perl
@@ -32,7 +32,7 @@ Architecture: all
 Section: database
 Suggests: libdr-tarantoolqueue-perl
 Depends: ${misc:Depends}, ${perl:Depends},
- tarantool (>= 1.4.8+20130110-1) | tarantool-lts
+ tarantool-lts | tarantool (>= 1.4.8+20130110-1)
 Homepage: https://github.com/mailru/tarantool-queue/
 Description: queue components for tarantool
  The package contains init.lua and tarantool.cfg to build queue daemon
