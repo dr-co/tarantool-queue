@@ -3,14 +3,15 @@
 local yaml = require 'yaml'
 local test = require('tap').test()
 local fiber = require 'fiber'
-test:plan(7)
+test:plan(8)
 
 local tnt = require('t.tnt')
 test:ok(tnt, 'tarantool loaded')
 tnt.cfg{}
 
 local mq = require 'megaqueue'
-test:ok(mq, 'queue started')
+test:ok(mq, 'queue loaded')
+test:ok(mq:init() > 0, 'First init queue')
 
 test:ok(box.space.MegaQueue, 'Space created')
 

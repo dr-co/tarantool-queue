@@ -18,29 +18,24 @@ local C_TUBE        = 2
 local C_CLIENT      = 3
 local C_FID         = 4
 
+local TIMEOUT_INFINITY        = 86400 * 365 * 100
 
-_G.mq = {
+local mq = {
     VERSION                 = '1.0',
 
-    TIMEOUT_INFINITY        = 86400 * 365 * 100,
-
     defaults    = {
-        ttl             = 86400,
-        ttr             = 86400,
-        pri             = 0,
-        domain          = '',
-        delay           = 0,
+        ttl                 = 86400,
+        ttr                 = 86400,
+        pri                 = 0,
+        domain              = '',
+        delay               = 0,
     },
-
-
-
 
     -- last serials
     serial  = {
         MegaQueue               = nil,
         MegaQueueConsumers      = nil,
     },
-
 
     migrations  = require('megaqueue.migrations')
 }
@@ -64,11 +59,6 @@ function mq.extend(self, t1, t2)
 end
 
 
-function mq.init(self)
-    local upgrades = self.migrations:upgrade(self)
-    log.info('MegaQueue started')
-    return upgrades
-end
 
 function mq._serial(self, space)
     if self.serial[space] == nil then
@@ -76,7 +66,7 @@ function mq._serial(self, space)
         if max ~= nil then
             self.serial[space] = max[1]
         else
-            self.serial[space] = tonumber64(30000000000)
+            self.serial[space] = tonumber64(0)
         end
     end
     return self.serial[space] + tonumber64(1)
@@ -198,7 +188,7 @@ end
 
 function mq.take(self, tube, timeout)
     if timeout == nil then
-        timeout = self.TIMEOUT_INFINITY
+        timeout = TIMEOUT_INFINITY
     else
         timeout = tonumber(timeout)
     end
@@ -244,7 +234,11 @@ function mq.take(self, tube, timeout)
     end
 end
 
--- each tarantool's start upgrade queue
-mq:init()
+function mq.init(self)
+    local upgrades = self.migrations:upgrade(self)
+    log.info('MegaQueue started')
+    return upgrades
+end
+
 
 return mq
