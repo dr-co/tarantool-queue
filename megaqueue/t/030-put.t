@@ -20,7 +20,6 @@ test:ok(box.space.MegaQueue, 'Space created')
 test:test("put ready task", function(test)
 
     test:plan(9)
-
     local task = mq:put('tube1', { ttl = 1 }, 123)
     test:ok(task, 'task was put')
 

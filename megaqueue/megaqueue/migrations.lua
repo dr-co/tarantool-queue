@@ -18,7 +18,7 @@ migrations.list = {
                     format  = {
                         {                           -- #1
                             ['name']    = 'id',
-                            ['type']    = 'num',
+                            ['type']    = 'unsigned',
                         },
 
                         {                           -- #2
@@ -28,7 +28,7 @@ migrations.list = {
 
                         {                           -- #3
                             ['name']    = 'pri',
-                            ['type']    = 'num',
+                            ['type']    = 'number',
                         },
 
                         {                           -- #4
@@ -43,12 +43,12 @@ migrations.list = {
 
                         {                           -- #6
                             ['name']    = 'event',
-                            ['type']    = 'num',
+                            ['type']    = 'number',
                         },
 
                         {                           -- #7
                             ['name']    = 'client',
-                            ['type']    = 'num',
+                            ['type']    = 'unsigned',
                         },
 
                         {                           -- #8
@@ -74,7 +74,7 @@ migrations.list = {
                 {
                     unique  = true,
                     type    = 'tree',
-                    parts   = { 1, 'num' }
+                    parts   = { 1, 'unsigned' }
                 }
             )
         end
@@ -95,6 +95,20 @@ migrations.list = {
     },
 
     {
+        description = 'MegaQueue: create event index',
+        up  = function()
+            box.space.MegaQueue:create_index(
+                'event',
+                {
+                    unique  = false,
+                    type    = 'tree',
+                    parts   = { 6, 'number' }
+                }
+            )
+        end
+    },
+
+    {
         description = 'MegaQueue: work index',
         up = function()
             box.space.MegaQueue:create_index(
@@ -102,7 +116,7 @@ migrations.list = {
                 {
                     unique  = false,
                     type    = 'tree',
-                    parts   = { 2, 'str', 5, 'str', 3, 'num', 1, 'num' }
+                    parts   = { 2, 'str', 5, 'str', 3, 'number', 1, 'unsigned' }
                 }
             )
         end
@@ -118,7 +132,7 @@ migrations.list = {
                     format  = {
                         {                               -- #1
                             ['name']    = 'id',
-                            ['type']    = 'num',
+                            ['type']    = 'unsigned',
                         },
                         {                               -- #2
                             ['name']    = 'tube',
@@ -126,11 +140,11 @@ migrations.list = {
                         },
                         {                               -- #3
                             ['name']    = 'session',
-                            ['type']    = 'num',
+                            ['type']    = 'unsigned',
                         },
                         {                               -- #4
                             ['name']    = 'fid',
-                            ['type']    = 'num',
+                            ['type']    = 'unsigned',
                         }
                     },
                     temporary   = true,
@@ -147,7 +161,7 @@ migrations.list = {
                 {
                     unique  = true,
                     type    = 'tree',
-                    parts   = { 1, 'num' }
+                    parts   = { 1, 'unsigned' }
                 }
             )
         end
@@ -161,7 +175,7 @@ migrations.list = {
                 {
                     unique  = true,
                     type    = 'tree',
-                    parts   = { 2, 'str',  3, 'num', 1, 'num' }
+                    parts   = { 2, 'str',  3, 'unsigned', 1, 'unsigned' }
                 }
             )
         end

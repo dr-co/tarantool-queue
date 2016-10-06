@@ -102,7 +102,7 @@ function mq._take(self, tube)
     box.commit()
 
     -- wakeup
-    return self:_normalize(task)
+    return task
 end
 
 function mq._normalize(self, task)
@@ -114,6 +114,20 @@ end
 
 function mq._process_tube(self, tube)
 
+end
+
+
+function mq._task_by_tube_domain(self, tube, domain, statuses)
+    local list
+
+    for _, status in pairs(statuses) do
+        list = box.space.MegaQueue.index.tube_domain_status
+                    :select({ tube, domain, status },
+                                { iterator = 'EQ', limit = 1 })
+        if #list > 0 then
+            return list[1]
+        end
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -130,24 +144,16 @@ function mq.put(self, tube, opts, data)
     if opts.delay > 0 then
         opts.ttl = opts.ttl + opts.delay
         status = 'delayed'
-    end
+    elseif opts.domain ~= '' then
+        -- checks domain
+        local exists =
+            self:_task_by_tube_domain(tube, opts.domain, { 'ready', 'work' })
 
-    -- checks domain
-    if status == 'ready' and opts.domain ~= '' then
-        local exists = box.space.MegaQueue.index.tube_domain_status
-                        :select({tube, opts.domain, 'ready'},
-                            { iterator = 'EQ', limit = 1 })
-        if #exists == 0 then
-            exists = box.space.MegaQueue.index.tube_domain_status
-                        :select({tube, opts.domain, 'work'},
-                            { iterator = 'EQ', limit = 1 })
-        end
-
-        if #exists > 0 then
+        if exists ~= nil then
             status = 'wait'
         end
     end
-
+     
     local event
 
     opts.created = fiber.time()
@@ -174,6 +180,7 @@ function mq.put(self, tube, opts, data)
         [OPTIONS]   = opts,
         [DATA]      = data,
     }
+
 
     box.begin()
         tuple = box.space.MegaQueue:insert(tuple)
@@ -237,8 +244,81 @@ end
 function mq.init(self)
     local upgrades = self.migrations:upgrade(self)
     log.info('MegaQueue started')
+
+    if self._run_fiber ~= nil then
+        self._run_fiber[1] = false
+        self._run_fiber = nil
+    end
+
+    self._run_fiber = { true }
+--     self:run_worker()
+
+
     return upgrades
 end
 
+
+function mq.run_worker(self)
+    local rw = self._run_fiber
+
+    fiber.create(function()
+        local now
+        while rw[1] do
+            now = fiber.time()
+            local task = box.space.MegaQueue.index.event:min()
+            if task == nil then
+                rw[2] = fiber.id()
+                fiber.sleep(3600)
+                rw[2] = nil
+            else
+
+                if task[EVENT] > now then
+                    rw[2] = fiber.id()
+                    fiber.sleep(now - task[EVENT])
+                    rw[2] = nil
+
+                else
+                    -- ttl works in ANY status
+                    if task[OPTIONS].ttl + task[OPTIONS].created >= now then
+                        self._ttl_task(task)
+                    
+                    -- ttr
+                    elseif task[STATUS] == 'work' then
+                        self._task_to_ready(task)
+
+                    -- delayed to ready
+                    elseif task[STATUS] == 'delayed' then
+                        self._task_to_ready(task)
+                    else
+                        log.warning(
+                            string.format(
+                                'Internal error: task[%s] in state %s',
+                                tostring(task[ID]),
+                                task[STATUS]
+                            )
+                        )
+                    end
+                end
+            end
+        end
+    end)
+end
+
+function mq._ttl_task(self, task)
+    box.begin()
+        box.space.MegaQueue:delete(task[ID])
+
+        
+        if task[DOMAIN] ~= '' and (task[STATUS] == 'ready' or task[STATUS] == 'work') then
+
+
+        end
+
+    box.commit()
+end
+
+function mq._task_to_ready(self, task)
+
+end
 
 return mq
