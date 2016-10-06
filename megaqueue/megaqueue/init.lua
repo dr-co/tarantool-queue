@@ -109,7 +109,6 @@ function mq._take(self, tube)
         -- TODO: update statistics
     box.commit()
 
-    -- wakeup
     return task
 end
 
@@ -174,7 +173,7 @@ function mq.put(self, tube, opts, data)
     opts.pri = nil
     opts.domain = nil
 
-    local tuple = box.tuple.new {
+    local task = box.tuple.new {
         [ID]        = self:_serial('MegaQueue'),
         [TUBE]      = tube,
         [PRI]       = pri,
@@ -186,16 +185,28 @@ function mq.put(self, tube, opts, data)
         [DATA]      = data,
     }
 
-
+    local consumer
     box.begin()
-        tuple = box.space.MegaQueue:insert(tuple)
+        task = box.space.MegaQueue:insert(task)
         self:_next_serial('MegaQueue')
+
         -- TODO: update statistic
+
+        if status == 'ready' then
+            consumer = box.space.MegaQueueConsumers.index.tube_id:min(tube)
+            if consumer ~= nil and consumer[C_TUBE] == tube then
+                box.space.MegaQueueConsumers:delete(consumer[C_ID])
+            end
+        end
     box.commit()
 
-    self:_process_tube(tube)
+    if consumer ~= nil then
+        fiber.find(consumer[C_FID]):wakeup()
+    end
 
-    return self:_normalize(tuple)
+    self:_process_tube(task)
+
+    return self:_normalize(task)
 end
 
 function mq.take(self, tube, timeout)
@@ -233,7 +244,7 @@ function mq.take(self, tube, timeout)
             box.space.MegaQueueConsumers:insert(consumer)
             self:_next_serial('MegaQueueConsumers')
         box.commit()
-
+        
         fiber.sleep(timeout)
 
         box.space.MegaQueueConsumers:delete(consumer[C_ID])

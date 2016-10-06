@@ -26,7 +26,7 @@ end)
 
 test:test("take ready task", function(test)
 
-    test:plan(11)
+    test:plan(12)
 
 
     local task = mq:take('tube1', 0.5)
@@ -41,6 +41,7 @@ test:test("take ready task", function(test)
     test:ok(task[8].created <= fiber.time(), 'task created')
     test:is(task[9], 123, 'task data')
     test:ok(fiber.time() - started >= 0.25, 'waiting time')
+    test:ok(fiber.time() - started < 0.5, 'waiting time')
 
     task = mq:take('tube1', 0.1)
     test:ok(task == nil, 'second task is not taken')

@@ -171,11 +171,11 @@ migrations.list = {
         description = 'Create tube index MegaQueueConsumers',
         up = function()
             box.space.MegaQueueConsumers:create_index(
-                'tube_session_id',
+                'tube_id',
                 {
                     unique  = true,
                     type    = 'tree',
-                    parts   = { 2, 'str',  3, 'unsigned', 1, 'unsigned' }
+                    parts   = { 2, 'str',  1, 'unsigned' }
                 }
             )
         end
