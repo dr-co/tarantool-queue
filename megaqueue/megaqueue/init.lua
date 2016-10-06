@@ -371,12 +371,19 @@ function mq._task_to_ready(self, task)
     local status = 'ready'
     local event = task[OPTIONS].created + task[OPTIONS].ttl
 
-    if task[OPTIONS].domain ~= '' then
+    if task[DOMAIN] ~= '' then
+        local ck_statuses
+        if task[STATUS] == 'work' then
+            ck_statuses = { 'ready' }
+        else
+            ck_statuses = { 'ready', 'work' }
+        end
+        
         local exists =
             self:_task_by_tube_domain(
                 task[TUBE],
                 task[DOMAIN],
-                { 'ready', 'work' }
+                ck_statuses
             )
         if exists ~= nil then
             status = 'wait'
