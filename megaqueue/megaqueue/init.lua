@@ -91,12 +91,20 @@ function mq._take(self, tube)
         return self:_normalize()
     end
 
+    local ttl = task[OPTIONS].created + task[OPTIONS].ttl
+    local ttr = task[OPTIONS].ttr + fiber.time()
+
+    if ttr > ttl then
+        ttr = ttl
+    end
+
     box.begin()
 
         task = box.space.MegaQueue:update(
                 task[ID], {
                     { '=', STATUS, 'work' },
-                    { '=', CLIENT, box.session.id() }
+                    { '=', CLIENT, box.session.id() },
+                    { '=', EVENT, ttr }
                 })
         -- TODO: update statistics
     box.commit()
@@ -112,9 +120,6 @@ function mq._normalize(self, task)
     return task
 end
 
-function mq._process_tube(self, tube)
-
-end
 
 
 function mq._task_by_tube_domain(self, tube, domain, statuses)
@@ -153,7 +158,7 @@ function mq.put(self, tube, opts, data)
             status = 'wait'
         end
     end
-     
+
     local event
 
     opts.created = fiber.time()
@@ -204,6 +209,8 @@ function mq.take(self, tube, timeout)
 
     local started = fiber.time()
 
+    log.info('Run mq:take %s', tube)
+
     while timeout >= 0 do
 
         local task = self:_take(tube)
@@ -236,7 +243,7 @@ function mq.take(self, tube, timeout)
         started = now
 
         if timeout < 0 then
-            return self:_take(tube)
+            return self:_normalize(self:_take(tube))
         end
     end
 end
@@ -251,7 +258,7 @@ function mq.init(self)
     end
 
     self._run_fiber = { true }
---     self:run_worker()
+    self:run_worker()
 
 
     return upgrades
@@ -274,27 +281,27 @@ function mq.run_worker(self)
 
                 if task[EVENT] > now then
                     rw[2] = fiber.id()
-                    fiber.sleep(now - task[EVENT])
+                    fiber.sleep(task[EVENT] - now)
                     rw[2] = nil
 
                 else
                     -- ttl works in ANY status
-                    if task[OPTIONS].ttl + task[OPTIONS].created >= now then
-                        self._ttl_task(task)
-                    
+                    if task[OPTIONS].ttl + task[OPTIONS].created <= now then
+                        self:_task_delete(task, 'TTL')
+
+
                     -- ttr
                     elseif task[STATUS] == 'work' then
-                        self._task_to_ready(task)
+                        self:_task_to_ready(task)
 
                     -- delayed to ready
                     elseif task[STATUS] == 'delayed' then
-                        self._task_to_ready(task)
+                        self:_task_to_ready(task)
                     else
-                        log.warning(
+                        error(
                             string.format(
-                                'Internal error: task[%s] in state %s',
-                                tostring(task[ID]),
-                                task[STATUS]
+                                'Internal error: event on task [%s]',
+                                    require('json').encode(task)
                             )
                         )
                     end
@@ -304,21 +311,99 @@ function mq.run_worker(self)
     end)
 end
 
-function mq._ttl_task(self, task)
+function mq._enqueue_task_by(self, task)
+    if task[STATUS] ~= 'ready' and task[STATUS] ~= 'work' then
+        return
+    end
+
+    if task[DOMAIN] == '' then
+        return
+    end
+
+    -- check if error (impossible, but...)
+    local exists =
+        self:_task_by_tube_domain(
+            task[TUBE],
+            task[DOMAIN],
+            { 'ready', 'work' }
+        )
+
+    if exists ~= nil then
+        return
+    end
+
+    local wait_task =
+        self:_task_by_tube_domain(
+            task[TUBE],
+            task[DOMAIN],
+            { 'wait' }
+        )
+
+    if wait_task == nil then
+        return
+    end
+
+    box.space.MegaQueue:update(wait_task[ID],
+        {
+            { '=', STATUS, 'ready' },
+            { '=', CLIENT, 0 },
+            { '=', EVENT,
+                    wait_task[OPTIONS].ttl + wait_task[OPTIONS].created }
+        }
+    )
+end
+
+function mq._task_delete(self, task, reason)
     box.begin()
         box.space.MegaQueue:delete(task[ID])
 
-        
-        if task[DOMAIN] ~= '' and (task[STATUS] == 'ready' or task[STATUS] == 'work') then
+        self:_enqueue_task_by(task)
 
 
-        end
-
+        -- TODO: statistics
     box.commit()
+    log.info('Task %s (%s) was removed. Reason: %s',
+        tostring(task[ID]), tostring(task[TUBE]), reason)
 end
 
 function mq._task_to_ready(self, task)
 
+    local status = 'ready'
+    local event = task[OPTIONS].created + task[OPTIONS].ttl
+
+    if task[OPTIONS].domain ~= '' then
+        local exists =
+            self:_task_by_tube_domain(
+                task[TUBE],
+                task[DOMAIN],
+                { 'ready', 'work' }
+            )
+        if exists ~= nil then
+            status = 'wait'
+        end
+    end
+
+    box.begin()
+        box.space.MegaQueue:update(task[ID], {
+            { '=', STATUS, status },
+            { '=', EVENT, event },
+            { '=', CLIENT, 0 }
+        })
+
+        -- TODO: statistics
+    box.commit()
+end
+
+function mq._process_tube(self, tube)
+    if self._run_fiber == nil then
+        return
+    end
+    if self._run_fiber[2] == nil then
+        return
+    end
+    local fid = self._run_fiber[2]
+    self._run_fiber[2] = nil
+    fiber.find(fid):wakeup()
 end
 
 return mq
