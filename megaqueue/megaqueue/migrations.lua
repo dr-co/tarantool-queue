@@ -121,65 +121,6 @@ migrations.list = {
             )
         end
     },
-
-    {
-        description = 'Create space MegaQueueConsumers',
-        up  = function()
-            box.schema.space.create(
-                'MegaQueueConsumers',
-                {
-                    engine      = 'memtx',
-                    format  = {
-                        {                               -- #1
-                            ['name']    = 'id',
-                            ['type']    = 'unsigned',
-                        },
-                        {                               -- #2
-                            ['name']    = 'tube',
-                            ['type']    = 'str',
-                        },
-                        {                               -- #3
-                            ['name']    = 'session',
-                            ['type']    = 'unsigned',
-                        },
-                        {                               -- #4
-                            ['name']    = 'fid',
-                            ['type']    = 'unsigned',
-                        }
-                    },
-                    temporary   = true,
-                }
-            )
-        end
-    },
-
-    {
-        description = 'Create primary index MegaQueueConsumers',
-        up = function()
-            box.space.MegaQueueConsumers:create_index(
-                'id',
-                {
-                    unique  = true,
-                    type    = 'tree',
-                    parts   = { 1, 'unsigned' }
-                }
-            )
-        end
-    },
-    
-    {
-        description = 'Create tube index MegaQueueConsumers',
-        up = function()
-            box.space.MegaQueueConsumers:create_index(
-                'tube_id',
-                {
-                    unique  = true,
-                    type    = 'tree',
-                    parts   = { 2, 'str',  1, 'unsigned' }
-                }
-            )
-        end
-    },
 }
 
 

@@ -15,7 +15,6 @@ test:ok(mq:init() > 0, 'First init queue')
 
 test:ok(box.space.MegaQueue, 'Space created')
 
-local started = fiber.time()
 test:test('put delayed task', function(test)
     test:plan(2)
     local task = mq:put('tube1', { ttr = .25 }, 123)
@@ -25,10 +24,11 @@ end)
 
 test:test("take ready task", function(test)
 
-    test:plan(15)
+    test:plan(16)
 
 
-    local task = mq:take('tube1', 0.5)
+    local started = fiber.time()
+    local task = mq:take('tube1', 1)
     test:ok(task, 'task was taken')
 
     test:is(task[2], 'tube1', 'tube name')
@@ -39,9 +39,9 @@ test:test("take ready task", function(test)
     test:is(task[7], box.session.id(), 'task client id')
     test:ok(task[8].created <= fiber.time(), 'task created')
     test:is(task[9], 123, 'task data')
-    test:ok(fiber.time() - started <= 0.1, 'waiting time')
+    test:ok(fiber.time() - started <= 0.05, 'waiting time')
 
-    local t = mq:take('tube1', 0.5)
+    local t = mq:take('tube1', 2)
     if not test:ok(t ~= nil, 'task was retaken') then
         return
     end
@@ -49,8 +49,8 @@ test:test("take ready task", function(test)
     test:is(t[1], task[1], 'task id')
     test:is(t[5], 'work', 'task status')
     test:is(t[7], box.session.id(), 'task client id')
-    test:ok(t[6] <= started + mq.defaults.ttl, 'next event at ttl')
-                                    
+    test:ok(fiber.time() >= started + 0.25, 'next event at ttr')
+    test:ok(fiber.time() < started + 0.35, 'next event at ttl')
 end)
 
 

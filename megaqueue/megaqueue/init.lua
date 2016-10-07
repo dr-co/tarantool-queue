@@ -32,13 +32,59 @@ local mq = {
     },
 
     -- last serials
-    serial  = {
-        MegaQueue               = nil,
-        MegaQueueConsumers      = nil,
-    },
+    private = {
+        serial  = {
+            MegaQueue               = nil,
+        },
 
-    migrations  = require('megaqueue.migrations')
+        migrations  = require('megaqueue.migrations'),
+
+
+        consumer    = {}
+    }
 }
+
+
+function mq._consumer_add(self, tube)
+    if self.private.consumer[tube] == nil then
+        self.private.consumer[tube] = {}
+    end
+    table.insert(self.private.consumer[tube], fiber.id())
+end
+
+function mq._consumer_drop(self)
+    local fid = fiber.id()
+    if self.private.consumer[tube] == nil then
+        return
+    end
+    for i, fiber_id in pairs(self.private.consumer[tube]) do
+        if fid == fiber_id then
+            table.remove(self.private.consumer[tube], i)
+            break
+        end
+    end
+end
+
+function mq._consumer_wakeup(self, tube)
+    if self.private.consumer[tube] == nil then
+        return
+    end
+    for i, fid in pairs(self.private.consumer[tube]) do
+        if fid ~= nil then
+            table.remove(self.private.consumer[tube], i)
+            fiber.find(fid):wakeup()
+            break
+        end
+    end
+end
+
+function mq._consumer_sleep(self, tube, timeout)
+    self:_consumer_add(tube)
+    fiber.sleep(timeout)
+    self:_consumer_drop()
+end
+
+
 
 function mq.extend(self, t1, t2)
     local res = {}
@@ -61,19 +107,19 @@ end
 
 
 function mq._serial(self, space)
-    if self.serial[space] == nil then
+    if self.private.serial[space] == nil then
         local max = box.space[space].index.id:max()
         if max ~= nil then
-            self.serial[space] = max[1]
+            self.private.serial[space] = max[1]
         else
-            self.serial[space] = tonumber64(0)
+            self.private.serial[space] = tonumber64(0)
         end
     end
-    return self.serial[space] + tonumber64(1)
+    return self.private.serial[space] + tonumber64(1)
 end
 
 function mq._next_serial(self, space)
-    self.serial[space] = self:_serial(space)
+    self.private.serial[space] = self:_serial(space)
 end
 
 function mq._mktuple(self, tube, status, opts, data)
@@ -192,21 +238,22 @@ function mq.put(self, tube, opts, data)
 
         -- TODO: update statistic
 
-        if status == 'ready' then
-            consumer = box.space.MegaQueueConsumers.index.tube_id:min(tube)
-            if consumer ~= nil and consumer[C_TUBE] == tube then
-                box.space.MegaQueueConsumers:delete(consumer[C_ID])
-            end
-        end
+        self:_consumer_wakeup(tube)
     box.commit()
 
-    if consumer ~= nil then
-        fiber.find(consumer[C_FID]):wakeup()
-    end
+    self:_wakeup_consumer(consumer)
 
     self:_process_tube(task)
 
     return self:_normalize(task)
+end
+
+function mq._wakeup_consumer(self, consumer)
+    if consumer == nil then
+        return
+    end
+
+    fiber.find(consumer[C_FID]):wakeup()
 end
 
 function mq.take(self, tube, timeout)
@@ -220,8 +267,6 @@ function mq.take(self, tube, timeout)
 
     local started = fiber.time()
 
-    log.info('Run mq:take %s', tube)
-
     while timeout >= 0 do
 
         local task = self:_take(tube)
@@ -229,25 +274,11 @@ function mq.take(self, tube, timeout)
             return self:_normalize(task)
         end
 
-        if timeout == 0 then
+        if timeout <= 0 then
             return
         end
 
-        local consumer = box.tuple.new{
-            [C_ID]          = self:_serial('MegaQueueConsumers'),
-            [C_TUBE]        = tube,
-            [C_CLIENT]      = box.session.id(),
-            [C_FID]         = fiber.id(),
-        }
-
-        box.begin()
-            box.space.MegaQueueConsumers:insert(consumer)
-            self:_next_serial('MegaQueueConsumers')
-        box.commit()
-        
-        fiber.sleep(timeout)
-
-        box.space.MegaQueueConsumers:delete(consumer[C_ID])
+        self:_consumer_sleep(tube, timeout)
 
         local now = fiber.time()
         timeout = timeout - (now - started)
@@ -260,7 +291,7 @@ function mq.take(self, tube, timeout)
 end
 
 function mq.init(self)
-    local upgrades = self.migrations:upgrade(self)
+    local upgrades = self.private.migrations:upgrade(self)
     log.info('MegaQueue started')
 
     if self._run_fiber ~= nil then
@@ -373,8 +404,6 @@ function mq._task_delete(self, task, reason)
 
         -- TODO: statistics
     box.commit()
-    log.info('Task %s (%s) was removed. Reason: %s',
-        tostring(task[ID]), tostring(task[TUBE]), reason)
 end
 
 function mq._task_to_ready(self, task)
@@ -401,13 +430,15 @@ function mq._task_to_ready(self, task)
         end
     end
 
+    local consumer
     box.begin()
         box.space.MegaQueue:update(task[ID], {
             { '=', STATUS, status },
             { '=', EVENT, event },
             { '=', CLIENT, 0 }
         })
-
+        
+        self:_consumer_wakeup(task[TUBE])
         -- TODO: statistics
     box.commit()
 end
