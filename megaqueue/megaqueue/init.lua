@@ -97,6 +97,16 @@ function mq.extend(self, t1, t2)
 
     if t2 ~= nil then
         for k, v in pairs(t2) do
+            if res[k] ~= nil and v ~= nil and type(res[k]) ~= type(v) then
+                box.error(box.error.PROC_LUA,
+                    string.format(
+                        'Wrong type for ".%s": %s (have to be %s)',
+                        tostring(k),
+                        type(v),
+                        type(res[k])
+                    )
+                )
+            end
             res[k] = v
         end
     end
