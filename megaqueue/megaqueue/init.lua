@@ -559,10 +559,22 @@ function mq.init(self, defaults)
 
     if self._run_fiber ~= nil then
         self._run_fiber[1] = false
-        self._run_fiber = nil
     end
 
     self._run_fiber = { true }
+
+    while true do
+        local task = box.space.MegaQueue.index.status:min('work')
+        if task == nil then
+            break
+        end
+        if task[STATUS] ~= 'work' then
+            break
+        end
+        self:_task_to_ready(task)
+    end
+
+
     self:_run_worker()
 
 

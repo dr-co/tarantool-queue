@@ -28,7 +28,7 @@ migrations.list = {
 
                         {                           -- #3
                             ['name']    = 'pri',
-                            ['type']    = 'number',
+                            ['type']    = 'unsigned',
                         },
 
                         {                           -- #4
@@ -116,7 +116,20 @@ migrations.list = {
                 {
                     unique  = false,
                     type    = 'tree',
-                    parts   = { 2, 'str', 5, 'str', 3, 'number', 1, 'unsigned' }
+                    parts   = { 2, 'str', 5, 'str', 3, 'unsigned', 1, 'unsigned' }
+                }
+            )
+        end
+    },
+    {
+        description = 'MegaQueue: status index',
+        up = function()
+            box.space.MegaQueue:create_index(
+                'status',
+                {
+                    unique  = false,
+                    type    = 'tree',
+                    parts   = { 5, 'str', 1, 'unsigned' }
                 }
             )
         end
