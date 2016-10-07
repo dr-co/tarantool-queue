@@ -330,6 +330,42 @@ function mq._process_tube(self, tube)
     fiber.find(fid):wakeup()
 end
 
+function mq._tid_by_task_or_tid(self, tid, usage)
+    if tid == nil then
+        box.error(box.error.PROC_LUA, usage)
+    end
+
+    if type(tid) == 'table' or type(tid) == 'cdata' then
+        return tonumber64(tid[1])
+    end
+    return tonumber64(tid)
+end
+
+function mq._get_taken(self, tid)
+    local task = box.space.MegaQueue:get(tid)
+    if task == nil then
+        box.error(box.error.PROC_LUA, string.format('Task %s not found', tid))
+    end
+
+    if task[CLIENT] ~= box.session.id() then
+        box.error(box.error.PROC_LUA,
+            string.format(
+                'Task %s was not taken (or was released by TTR)', tid)
+        )
+    end
+
+    if task[STATUS] ~= 'work' then
+        box.error(box.error.PROC_LUA,
+            string.format(
+                'Task %s is not in work status (%s)',
+                tid,
+                task[STATUS]
+            )
+        )
+    end
+    return task
+end
+
 ------------------------------------------------------------------------------
 -- API
 ------------------------------------------------------------------------------
@@ -436,53 +472,15 @@ function mq.put(self, tube, opts, data)
     return self:_normalize_task(task)
 end
 
-
-function mq._tid_by_task_or_tid(self, tid, usage)
-    if tid == nil then
-        box.error(box.error.PROC_LUA, usage)
-    end
-
-    if type(tid) == 'table' or type(tid) == 'cdata' then
-        return tonumber64(tid[1])
-    end
-    return tonumber64(tid)
-end
-
-function mq._get_taken(self, tid)
-    local task = box.space.MegaQueue:get(tid)
-    if task == nil then
-        box.error(box.error.PROC_LUA, string.format('Task %s not found', tid))
-    end
-
-    if task[CLIENT] ~= box.session.id() then
-        box.error(box.error.PROC_LUA,
-            string.format(
-                'Task %s was not taken (or was released by TTR)', tid)
-        )
-    end
-
-    if task[STATUS] ~= 'work' then
-        box.error(box.error.PROC_LUA,
-            string.format(
-                'Task %s is not in work status (%s)',
-                tid,
-                task[STATUS]
-            )
-        )
-    end
-    return task
-end
-
-
 function mq.ack(self, tid)
 
     tid = self:_tid_by_task_or_tid(tid, 'usage: mq:ack(task_id)')
-    task = self:_get_taken(tid)
+    local task = self:_get_taken(tid)
     return self:_normalize_task(self:_task_delete(task))
 end
 
 function mq.release(self, tid, delay)
-    tid = self:_tid_by_task_or_tid(tid, 'usage: mq:ack(task_id)')
+    tid = self:_tid_by_task_or_tid(tid, 'usage: mq:release(task_id)')
     if delay ~= nil then
         delay = tonumber(delay)
         if delay < 0 then
@@ -492,7 +490,7 @@ function mq.release(self, tid, delay)
         delay = 0
     end
 
-    task = self:_get_taken(tid)
+    local task = self:_get_taken(tid)
 
 
     if delay > 0 then
@@ -511,6 +509,47 @@ function mq.release(self, tid, delay)
         return self:_normalize_task(task)
     end
     return self:_normalize_task(self:_task_to_ready(task))
+end
+
+
+function mq.bury(self, tid, comment)
+    tid = self:_tid_by_task_or_tid(tid, 'usage: mq:bury(task_id)')
+    local task = self:_get_taken(tid)
+   
+    local opts = task[OPTIONS]
+    opts.bury_comment = comment
+    task = box.space.MegaQueue:update(task[ID],
+        {
+            { '=', STATUS, 'buried' },
+            { '=', CLIENT, 0 },
+            { '=', EVENT, task[OPTIONS].created + task[OPTIONS].ttl },
+            { '=', OPTIONS, opts }
+        }
+    )
+    return self:_normalize_task(task)
+end
+
+
+function mq.kick(self, tube, count)
+    if count == nil then
+        count = 1
+    end
+    count = tonumber(count)
+    if count < 1 then
+        return
+    end
+
+    local list = box.space.MegaQueue.index.tube_status_pri_id
+        :select({ tube, 'buried' }, { limit = count, iterator = 'EQ' })
+
+    local res = {}
+    for _, task in pairs(list) do
+        table.insert(res, self:_task_to_ready(task))
+    end
+    if #res == 0 then
+        return
+    end
+    return res
 end
 
 function mq.init(self, defaults)
