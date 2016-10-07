@@ -3,7 +3,7 @@
 local json = require 'json'
 local test = require('tap').test()
 local fiber = require 'fiber'
-test:plan(9)
+test:plan(7)
 
 local tnt = require('t.tnt')
 test:ok(tnt, 'tarantool loaded')
@@ -17,22 +17,71 @@ test:ok(box.space.MegaQueue, 'Space created')
 
 
 
-local task = mq:put('tube1', { ttl = 1 }, 123)
-test:ok(task ~= nil, 'task was put')
+test:test('Ack by task id', function(test)
+    
+    test:plan(7)
 
-local taken = mq:take('tube1', 0.01)
-test:ok(taken ~= nil, 'task was taken')
+    local task = mq:put('tube1', { ttl = 1 }, 123)
+    test:ok(task ~= nil, 'task was put')
 
-test:diag(json.encode(taken))
+    local taken = mq:take('tube1', 0.01)
+    test:ok(taken ~= nil, 'task was taken')
 
-local ack = mq:ack(taken)
-test:ok(ack ~= nil, 'task was acked')
+    local ack = mq:ack(taken[1])
+    test:ok(ack ~= nil, 'task was acked')
 
-test:is(ack[5], 'removed', 'task status is removed')
+    test:is(ack[5], 'removed', 'task status is removed')
 
-local db = box.space.MegaQueue:get(task[1])
-test:ok(db == nil, 'DB do not contain the task')
+    local db = box.space.MegaQueue:get(task[1])
+    test:ok(db == nil, 'DB do not contain the task')
 
+
+    local status, err = pcall(function() mq:ack(taken[1]) end)
+    test:ok(not status, 'Ack removed task raise error')
+
+    test:like(tostring(err), 'not found', 'Error message')
+
+end)
+
+test:test('Ack by tuple', function(test)
+    
+    test:plan(5)
+
+    local task = mq:put('tube1', { ttl = 1 }, 123)
+    test:ok(task ~= nil, 'task was put')
+
+    local taken = mq:take('tube1', 0.01)
+    test:ok(taken ~= nil, 'task was taken')
+
+    local ack = mq:ack(taken)
+    test:ok(ack ~= nil, 'task was acked')
+
+    test:is(ack[5], 'removed', 'task status is removed')
+
+    local db = box.space.MegaQueue:get(task[1])
+    test:ok(db == nil, 'DB do not contain the task')
+
+end)
+
+test:test('Ack by table', function(test)
+    
+    test:plan(5)
+
+    local task = mq:put('tube1', { ttl = 1 }, 123)
+    test:ok(task ~= nil, 'task was put')
+
+    local taken = mq:take('tube1', 0.01)
+    test:ok(taken ~= nil, 'task was taken')
+
+    local ack = mq:ack({ taken:unpack() })
+    test:ok(ack ~= nil, 'task was acked')
+
+    test:is(ack[5], 'removed', 'task status is removed')
+
+    local db = box.space.MegaQueue:get(task[1])
+    test:ok(db == nil, 'DB do not contain the task')
+
+end)
 
 
 

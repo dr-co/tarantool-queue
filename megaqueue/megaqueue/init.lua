@@ -26,7 +26,7 @@ local mq = {
     defaults    = {
         ttl                 = 86400,
         ttr                 = 86400,
-        pri                 = 0,
+        pri                 = 50,
         domain              = '',
         delay               = 0,
     },
@@ -273,7 +273,7 @@ function mq._task_delete(self, task, reason)
     end
 end
 
-function mq._task_to_ready(self, task)
+function mq._task_to_ready(self, task, prolong_ttl)
 
     local status = 'ready'
     local event = task[OPTIONS].created + task[OPTIONS].ttl
@@ -297,17 +297,24 @@ function mq._task_to_ready(self, task)
         end
     end
 
-    local consumer
+    local opts = task[OPTIONS]
+    if prolong_ttl then
+        opts.ttl = opts.ttl + fiber.time() - opts.created()
+    end
+
+    local updated
     box.begin()
-        box.space.MegaQueue:update(task[ID], {
+        updated = box.space.MegaQueue:update(task[ID], {
             { '=', STATUS, status },
             { '=', EVENT, event },
-            { '=', CLIENT, 0 }
+            { '=', CLIENT, 0 },
+            { '=', OPTIONS, opts }
         })
         
         self:_consumer_wakeup(task[TUBE])
         -- TODO: statistics
     box.commit()
+    return updated
 end
 
 function mq._process_tube(self, tube)
@@ -423,19 +430,20 @@ function mq.put(self, tube, opts, data)
     return self:_normalize_task(task)
 end
 
-function mq.ack(self, tid)
 
+function mq._tid_by_task_or_tid(self, tid, usage)
     if tid == nil then
-        box.error(box.error.PROC_LUA, 'usage: mq:ack(task_id)')
+        box.error(box.error.PROC_LUA, usage)
     end
 
     if type(tid) == 'table' or type(tid) == 'cdata' then
-        tid = tonumber64(tid[1])
-    else
-        tid = tonumber64(tid)
+        return tonumber64(tid[1])
     end
+    return tonumber64(tid)
+end
 
-    task = box.space.MegaQueue:get(tid)
+function mq._get_taken(self, tid)
+    local task = box.space.MegaQueue:get(tid)
     if task == nil then
         box.error(box.error.PROC_LUA, string.format('Task %s not found', tid))
     end
@@ -456,10 +464,53 @@ function mq.ack(self, tid)
             )
         )
     end
+    return task
+end
+
+
+function mq.ack(self, tid)
+
+    tid = self:_tid_by_task_or_tid(tid, 'usage: mq:ack(task_id)')
+    task = self:_get_taken(tid)
     return self:_normalize_task(self:_task_delete(task))
 end
 
-function mq.init(self)
+function mq.release(self, tid, delay)
+    tid = self:_tid_by_task_or_tid(tid, 'usage: mq:ack(task_id)')
+    if delay ~= nil then
+        delay = tonumber(delay)
+        if delay < 0 then
+            delay = 0
+        end
+    else
+        delay = 0
+    end
+
+    task = self:_get_taken(tid)
+
+
+    if delay > 0 then
+        local opts = task[OPTIONS]
+        opts.ttl = opts.ttl + fiber.time() - opts.created + delay
+        local event = fiber.time() + delay
+        
+        task = box.space.MegaQueue:update(task[ID],
+            {
+                { '=', STATUS, 'delayed' },
+                { '=', CLIENT, 0 },
+                { '=', EVENT, event },
+                { '=', OPTIONS, opts }
+            }
+        )
+        return self:_normalize_task(task)
+    end
+    return self:_normalize_task(self:_task_to_ready(task))
+end
+
+function mq.init(self, defaults)
+
+    self.defaults = self:_extend(self.defaults, defaults)
+
     local upgrades = self.private.migrations:upgrade(self)
     log.info('MegaQueue started')
 
