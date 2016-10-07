@@ -34,9 +34,7 @@ local mq = {
 
     -- last serials
     private = {
-        serial  = {
-            MegaQueue               = nil,
-        },
+        serial  = {},
 
         migrations  = require('megaqueue.migrations'),
         consumer    = {}
