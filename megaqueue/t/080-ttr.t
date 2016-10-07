@@ -24,7 +24,7 @@ end)
 
 test:test("take ready task", function(test)
 
-    test:plan(16)
+    test:plan(15)
 
 
     local started = fiber.time()
@@ -32,7 +32,6 @@ test:test("take ready task", function(test)
     test:ok(task, 'task was taken')
 
     test:is(task[2], 'tube1', 'tube name')
-    test:is(task[3], mq.defaults.pri, 'task pri')
     test:is(task[4], '', 'task domain')
     test:is(task[5], 'work', 'task status')
     test:ok(task[6] <= fiber.time() + mq.defaults.ttl, 'next event at ttl')

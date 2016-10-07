@@ -1,6 +1,7 @@
 local log = require 'log'
 local fiber = require 'fiber'
 
+local MAX_PRI       = 1000
 
 local ID            = 1
 local TUBE          = 2
@@ -374,6 +375,7 @@ function mq.put(self, tube, opts, data)
     opts.domain = tostring(opts.domain)
     tube = tostring(tube)
 
+
     local status = 'ready'
     if opts.delay > 0 then
         opts.ttl = opts.ttl + opts.delay
@@ -398,9 +400,13 @@ function mq.put(self, tube, opts, data)
         event = opts.created + opts.ttl
     end
 
-    local pri = opts.pri
+    if opts.pri > MAX_PRI then
+        opts.pri = MAX_PRI
+    elseif opts.pri < 0 then
+        opts.pri = 0
+    end
+    local pri = MAX_PRI - opts.pri
     local domain = opts.domain
-    opts.pri = nil
     opts.domain = nil
 
     local task = box.tuple.new {
