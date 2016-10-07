@@ -3,16 +3,15 @@
 local json = require 'json'
 local test = require('tap').test()
 local fiber = require 'fiber'
+local fio = require 'fio'
 test:plan(20)
 
 local tnt = require('t.tnt')
 test:ok(tnt, 'tarantool loaded')
 
-local listen = tnt.dir() .. '/' .. 'socket.tnt'
+local listen = fio.pathjoin(tnt.dir(), 'socket.tnt')
 
-tnt.cfg{
-    listen = tnt.dir() .. '/' .. 'socket.tnt'
-}
+tnt.cfg{ listen = listen }
 
 box.schema.user.create('test', { password = 'test' })
 box.schema.user.grant(
