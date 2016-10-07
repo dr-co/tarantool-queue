@@ -564,7 +564,7 @@ function mq.init(self, defaults)
     self._run_fiber = { true }
 
     while true do
-        local task = box.space.MegaQueue.index.status:min('work')
+        local task = box.space.MegaQueue.index.status_client:min('work')
         if task == nil then
             break
         end
@@ -574,6 +574,12 @@ function mq.init(self, defaults)
         self:_task_to_ready(task)
     end
 
+    local list = box.session.on_disconnect()
+    for _, cb in pairs(list) do
+        box.session.on_disconnect(nil, cb)
+    end
+
+    box.session.on_disconnect(self:_on_disconnect())
 
     self:_run_worker()
 
@@ -581,6 +587,28 @@ function mq.init(self, defaults)
     return upgrades
 end
 
+
+function mq._on_disconnect(self)
+    return function()
+
+        local client = box.session.id()
+        local rf = self._run_fiber
+
+        fiber.create(function()
+            while rf[1] do
+                local task = box.space.MegaQueue.index
+                                        .status_client:min({ 'work', client })
+                if task == nil then
+                    break
+                end
+                if task[STATUS] ~= 'work' then
+                    break
+                end
+                self:_task_to_ready(task)
+            end
+        end)
+    end
+end
 
 
 return mq

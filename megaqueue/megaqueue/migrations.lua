@@ -125,11 +125,11 @@ migrations.list = {
         description = 'MegaQueue: status index',
         up = function()
             box.space.MegaQueue:create_index(
-                'status',
+                'status_client',
                 {
                     unique  = false,
                     type    = 'tree',
-                    parts   = { 5, 'str', 1, 'unsigned' }
+                    parts   = { 5, 'str', 7, 'unsigned' }
                 }
             )
         end
