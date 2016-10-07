@@ -38,40 +38,19 @@ local mq = {
         },
 
         migrations  = require('megaqueue.migrations'),
-
-
         consumer    = {}
     }
 }
 
-
-function mq._consumer_add(self, tube)
-    if self.private.consumer[tube] == nil then
-        self.private.consumer[tube] = {}
-    end
-    table.insert(self.private.consumer[tube], fiber.id())
-end
-
-function mq._consumer_drop(self)
-    local fid = fiber.id()
-    if self.private.consumer[tube] == nil then
-        return
-    end
-    for i, fiber_id in pairs(self.private.consumer[tube]) do
-        if fid == fiber_id then
-            table.remove(self.private.consumer[tube], i)
-            break
-        end
-    end
-end
-
+-- consumers control API
 function mq._consumer_wakeup(self, tube)
     if self.private.consumer[tube] == nil then
         return
     end
-    for i, fid in pairs(self.private.consumer[tube]) do
-        if fid ~= nil then
-            table.remove(self.private.consumer[tube], i)
+
+    for fid, bool in pairs(self.private.consumer[tube]) do
+        if bool then
+            self.private.consumer[tube][fid] = nil
             fiber.find(fid):wakeup()
             break
         end
@@ -79,14 +58,22 @@ function mq._consumer_wakeup(self, tube)
 end
 
 function mq._consumer_sleep(self, tube, timeout)
-    self:_consumer_add(tube)
+    
+    local fid = fiber.id()
+    
+    if self.private.consumer[tube] == nil then
+        self.private.consumer[tube] = {}
+    end
+
+    self.private.consumer[tube][fid] = true
+    
     fiber.sleep(timeout)
-    self:_consumer_drop()
+    
+    self.private.consumer[tube][fid] = nil
 end
 
-
-
-function mq.extend(self, t1, t2)
+-- Miscellaneous
+function mq._extend(self, t1, t2)
     local res = {}
 
     if t1 ~= nil then
@@ -114,8 +101,7 @@ function mq.extend(self, t1, t2)
     return res
 end
 
-
-
+-- Autoincrement
 function mq._serial(self, space)
     if self.private.serial[space] == nil then
         local max = box.space[space].index.id:max()
@@ -132,19 +118,14 @@ function mq._next_serial(self, space)
     self.private.serial[space] = self:_serial(space)
 end
 
-function mq._mktuple(self, tube, status, opts, data)
 
-
-    return tuple
-end
-
-
+-- try take task
 function mq._take(self, tube)
     local task = box.space.MegaQueue.index.tube_status_pri_id
                                 :min{ tube, 'ready' }
 
     if task == nil or task[STATUS] ~= 'ready' then
-        return self:_normalize()
+        return self:_normalize_task()
     end
 
     local ttl = task[OPTIONS].created + task[OPTIONS].ttl
@@ -168,14 +149,12 @@ function mq._take(self, tube)
     return task
 end
 
-function mq._normalize(self, task)
+function mq._normalize_task(self, task)
     if task == nil then
         return
     end
     return task
 end
-
-
 
 function mq._task_by_tube_domain(self, tube, domain, statuses)
     local list
@@ -190,134 +169,7 @@ function mq._task_by_tube_domain(self, tube, domain, statuses)
     end
 end
 
--------------------------------------------------------------------------------
--- Public API
--------------------------------------------------------------------------------
-function mq.put(self, tube, opts, data)
-    opts = self:extend(self.defaults, opts)
-
-    -- perl or some the othe langs can't recognize 1 and '1'
-    opts.domain = tostring(opts.domain)
-    tube = tostring(tube)
-
-    local status = 'ready'
-    if opts.delay > 0 then
-        opts.ttl = opts.ttl + opts.delay
-        status = 'delayed'
-    elseif opts.domain ~= '' then
-        -- checks domain
-        local exists =
-            self:_task_by_tube_domain(tube, opts.domain, { 'ready', 'work' })
-
-        if exists ~= nil then
-            status = 'wait'
-        end
-    end
-
-    local event
-
-    opts.created = fiber.time()
-
-    if status == 'delayed' then
-        event = opts.created + opts.delay
-    else
-        event = opts.created + opts.ttl
-    end
-
-    local pri = opts.pri
-    local domain = opts.domain
-    opts.pri = nil
-    opts.domain = nil
-
-    local task = box.tuple.new {
-        [ID]        = self:_serial('MegaQueue'),
-        [TUBE]      = tube,
-        [PRI]       = pri,
-        [DOMAIN]    = domain,
-        [STATUS]    = status,
-        [EVENT]     = event,
-        [CLIENT]    = 0,
-        [OPTIONS]   = opts,
-        [DATA]      = data,
-    }
-
-    local consumer
-    box.begin()
-        task = box.space.MegaQueue:insert(task)
-        self:_next_serial('MegaQueue')
-
-        -- TODO: update statistic
-
-        self:_consumer_wakeup(tube)
-    box.commit()
-
-    self:_wakeup_consumer(consumer)
-
-    self:_process_tube(task)
-
-    return self:_normalize(task)
-end
-
-function mq._wakeup_consumer(self, consumer)
-    if consumer == nil then
-        return
-    end
-
-    fiber.find(consumer[C_FID]):wakeup()
-end
-
-function mq.take(self, tube, timeout)
-    if timeout == nil then
-        timeout = TIMEOUT_INFINITY
-    else
-        timeout = tonumber(timeout)
-    end
-
-    tube = tostring(tube)
-
-    local started = fiber.time()
-
-    while timeout >= 0 do
-
-        local task = self:_take(tube)
-        if task ~= nil then
-            return self:_normalize(task)
-        end
-
-        if timeout <= 0 then
-            return
-        end
-
-        self:_consumer_sleep(tube, timeout)
-
-        local now = fiber.time()
-        timeout = timeout - (now - started)
-        started = now
-
-        if timeout < 0 then
-            return self:_normalize(self:_take(tube))
-        end
-    end
-end
-
-function mq.init(self)
-    local upgrades = self.private.migrations:upgrade(self)
-    log.info('MegaQueue started')
-
-    if self._run_fiber ~= nil then
-        self._run_fiber[1] = false
-        self._run_fiber = nil
-    end
-
-    self._run_fiber = { true }
-    self:run_worker()
-
-
-    return upgrades
-end
-
-
-function mq.run_worker(self)
+function mq._run_worker(self)
     local rw = self._run_fiber
 
     fiber.create(function()
@@ -406,14 +258,19 @@ function mq._enqueue_task_by(self, task)
 end
 
 function mq._task_delete(self, task, reason)
+    local rm_task
     box.begin()
-        box.space.MegaQueue:delete(task[ID])
+        rm_task = box.space.MegaQueue:delete(task[ID])
 
         self:_enqueue_task_by(task)
 
 
         -- TODO: statistics
     box.commit()
+
+    if rm_task ~= nil then
+        return rm_task:transform(STATUS, 1, 'removed')
+    end
 end
 
 function mq._task_to_ready(self, task)
@@ -464,5 +321,160 @@ function mq._process_tube(self, tube)
     self._run_fiber[2] = nil
     fiber.find(fid):wakeup()
 end
+
+------------------------------------------------------------------------------
+-- API
+------------------------------------------------------------------------------
+
+function mq.take(self, tube, timeout)
+    if timeout == nil then
+        timeout = TIMEOUT_INFINITY
+    else
+        timeout = tonumber(timeout)
+    end
+
+    tube = tostring(tube)
+
+    local started = fiber.time()
+
+    while timeout >= 0 do
+
+        local task = self:_take(tube)
+        if task ~= nil then
+            return self:_normalize_task(task)
+        end
+
+        if timeout <= 0 then
+            return
+        end
+
+        self:_consumer_sleep(tube, timeout)
+
+        local now = fiber.time()
+        timeout = timeout - (now - started)
+        started = now
+
+        if timeout < 0 then
+            return self:_normalize_task(self:_take(tube))
+        end
+    end
+end
+
+function mq.put(self, tube, opts, data)
+    opts = self:_extend(self.defaults, opts)
+
+    -- perl or some the othe langs can't recognize 1 and '1'
+    opts.domain = tostring(opts.domain)
+    tube = tostring(tube)
+
+    local status = 'ready'
+    if opts.delay > 0 then
+        opts.ttl = opts.ttl + opts.delay
+        status = 'delayed'
+    elseif opts.domain ~= '' then
+        -- checks domain
+        local exists =
+            self:_task_by_tube_domain(tube, opts.domain, { 'ready', 'work' })
+
+        if exists ~= nil then
+            status = 'wait'
+        end
+    end
+
+    local event
+
+    opts.created = fiber.time()
+
+    if status == 'delayed' then
+        event = opts.created + opts.delay
+    else
+        event = opts.created + opts.ttl
+    end
+
+    local pri = opts.pri
+    local domain = opts.domain
+    opts.pri = nil
+    opts.domain = nil
+
+    local task = box.tuple.new {
+        [ID]        = self:_serial('MegaQueue'),
+        [TUBE]      = tube,
+        [PRI]       = pri,
+        [DOMAIN]    = domain,
+        [STATUS]    = status,
+        [EVENT]     = event,
+        [CLIENT]    = 0,
+        [OPTIONS]   = opts,
+        [DATA]      = data,
+    }
+
+    local consumer
+    box.begin()
+        task = box.space.MegaQueue:insert(task)
+        self:_next_serial('MegaQueue')
+
+        -- TODO: update statistic
+
+        self:_consumer_wakeup(tube)
+    box.commit()
+
+    self:_process_tube(task)
+
+    return self:_normalize_task(task)
+end
+
+function mq.ack(self, tid)
+
+    if tid == nil then
+        box.error(box.error.PROC_LUA, 'usage: mq:ack(task_id)')
+    end
+
+    if type(tid) == 'table' or type(tid) == 'cdata' then
+        tid = tonumber64(tid[1])
+    else
+        tid = tonumber64(tid)
+    end
+
+    task = box.space.MegaQueue:get(tid)
+    if task == nil then
+        box.error(box.error.PROC_LUA, string.format('Task %s not found', tid))
+    end
+
+    if task[CLIENT] ~= box.session.id() then
+        box.error(box.error.PROC_LUA,
+            string.format(
+                'Task %s was not taken (or was released by TTR)', tid)
+        )
+    end
+
+    if task[STATUS] ~= 'work' then
+        box.error(box.error.PROC_LUA,
+            string.format(
+                'Task %s is not in work status (%s)',
+                tid,
+                task[STATUS]
+            )
+        )
+    end
+    return self:_normalize_task(self:_task_delete(task))
+end
+
+function mq.init(self)
+    local upgrades = self.private.migrations:upgrade(self)
+    log.info('MegaQueue started')
+
+    if self._run_fiber ~= nil then
+        self._run_fiber[1] = false
+        self._run_fiber = nil
+    end
+
+    self._run_fiber = { true }
+    self:_run_worker()
+
+
+    return upgrades
+end
+
+
 
 return mq
