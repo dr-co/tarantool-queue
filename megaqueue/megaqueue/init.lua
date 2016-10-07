@@ -594,6 +594,8 @@ function mq._on_disconnect(self)
         local client = box.session.id()
         local rf = self._run_fiber
 
+        log.info('Disconnected client %s', tostring(client))
+
         fiber.create(function()
             while rf[1] do
                 local task = box.space.MegaQueue.index
@@ -602,6 +604,9 @@ function mq._on_disconnect(self)
                     break
                 end
                 if task[STATUS] ~= 'work' then
+                    break
+                end
+                if task[CLIENT] ~= client then
                     break
                 end
                 self:_task_to_ready(task)
