@@ -6,6 +6,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
+use constant PLAN   => 27;
 use Test::More;
 use Encode qw(decode encode);
 
@@ -14,7 +15,7 @@ BEGIN {
     unless (eval 'require DR::Tnt') {
         plan skip_all => 'DR::Tnt is not installed';
     }
-    plan tests    => 25;
+    plan tests    => PLAN;
     use_ok 'DR::TarantoolQueue';
     use_ok 'DR::Tnt::Test';
     tarantool_version_check(1.6);
@@ -73,7 +74,11 @@ isnt $task1_t->id, $task2_t->id, "task1 and task2 aren't the same";
 isnt $task1_t->id, $task3_t->id, "task1 and task3 aren't the same";
 
 is $task1_t->status, 'work', 'task is taken';
-isa_ok $task1_t->ack => 'DR::TarantoolQueue::Task', 'task1.ack';
+isa_ok $task1_t->ack, 'DR::TarantoolQueue::Task', 'task1.ack';
 is $task1_t->status, 'ack(removed)', 'task is ack';
 isa_ok $q->ack(id => $task2_t->id), 'DR::TarantoolQueue::Task', 'task2.ack';
 
+
+my $t3_r = $task3_t->release(delay => 10);
+isa_ok $t3_r, 'DR::TarantoolQueue::Task', 'task3.release'; 
+is $t3_r->status, 'delayed', 'status';

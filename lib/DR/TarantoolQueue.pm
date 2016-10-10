@@ -776,8 +776,25 @@ Additionally, a new time to live and re-execution delay can be provided.
 
 =cut
 
+sub _release_messagepack {
+    my ($self, %o) = @_;
+    _check_opts \%o, qw(task id delay);
+    $o{delay} ||= 0;
+    my $id;
+    if ($o{task}) {
+        $id = $o{task}->id;
+    } else {
+        $id = $o{id};
+    }
+    my $tuples = $self->tnt->call_lua(
+        ['queue:release' => 'MegaQueue'], $id, $o{delay});
+    
+    return DR::TarantoolQueue::Task->tuple_messagepack($tuples->[0], $self);
+}
+
 sub release {
     my ($self, %o) = @_;
+    goto \&_release_messagepack if $self->msgpack;
     _check_opts \%o, qw(task id space ttl delay);
     $o{delay} ||= 0;
     my ($id, $space);
