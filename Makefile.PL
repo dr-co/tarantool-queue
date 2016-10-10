@@ -16,6 +16,9 @@ WriteMakefile(
             bugtracker => 'https://github.com/mailru/tarantool-queue/issues',
         }
     },
+    test    => {
+        RECURSIVE_TEST_FILES    => 1,
+    },
     ABSTRACT_FROM  => 'lib/DR/TarantoolQueue.pm',
     AUTHOR         => 'Dmitry E. Oboukhov <unera@debian.org>',
     LICENSE           => 'perl',
