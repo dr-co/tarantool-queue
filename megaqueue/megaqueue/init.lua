@@ -71,6 +71,18 @@ function mq._consumer_sleep(self, tube, timeout)
     self.private.consumer[tube][fid] = nil
 end
 
+function mq._consumer_reinit(self)
+    local list = self.private.consumer
+    self.private.consumer = {}
+    for _, tube in pairs(list) do
+        for fid, bool in pairs(tube) do
+            if bool then
+                fiber.find(fid):wakeup()
+            end
+        end
+    end
+end
+
 -- Miscellaneous
 function mq._extend(self, t1, t2)
     local res = {}
@@ -254,6 +266,7 @@ function mq._enqueue_task_by(self, task)
                     wait_task[OPTIONS].ttl + wait_task[OPTIONS].created }
         }
     )
+    self:_consumer_wakeup(wait_task[TUBE])
 end
 
 function mq._task_delete(self, task, reason)
@@ -262,7 +275,6 @@ function mq._task_delete(self, task, reason)
         rm_task = box.space.MegaQueue:delete(task[ID])
 
         self:_enqueue_task_by(task)
-
 
         -- TODO: statistics
     box.commit()
@@ -581,6 +593,7 @@ function mq.init(self, defaults)
 
     box.session.on_disconnect(self:_on_disconnect())
 
+    self:_consumer_reinit()
     self:_run_worker()
 
 

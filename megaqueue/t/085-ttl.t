@@ -15,41 +15,42 @@ test:ok(mq:init() > 0, 'First init queue')
 
 test:ok(box.space.MegaQueue, 'Space created')
 
-test:test('put task', function(test)
-    test:plan(2)
-    local task = mq:put('tube1', { ttr = .25 }, 123)
+test:test('put tasks', function(test)
+    test:plan(4)
+    local task = mq:put('tube1', { ttl = .25, domain = 'abc' }, 123)
     test:ok(task ~= nil, 'task was put')
     test:is(task[5], 'ready', 'state')
+    
+    local task2 = mq:put('tube1', { domain = 'abc' }, 345)
+    test:ok(task2, 'task was put')
+    test:is(task2[5], 'wait', 'state')
 end)
 
 test:test("take ready task", function(test)
 
-    test:plan(15)
+    test:plan(10)
 
 
     local started = fiber.time()
+
     local task = mq:take('tube1', 1)
     test:ok(task, 'task was taken')
-
-    test:is(task[2], 'tube1', 'tube name')
-    test:is(task[4], '', 'task domain')
     test:is(task[5], 'work', 'task status')
-    test:ok(task[6] <= fiber.time() + mq.defaults.ttl, 'next event at ttl')
-    test:is(task[7], box.session.id(), 'task client id')
-    test:ok(task[8].created <= fiber.time(), 'task created')
     test:is(task[9], 123, 'task data')
     test:ok(fiber.time() - started <= 0.05, 'waiting time')
 
+    
+    
     local t = mq:take('tube1', 2)
-    if not test:ok(t ~= nil, 'task was retaken') then
+    if not test:ok(t, 'task2 was taken') then
         return
     end
     
-    test:is(t[1], task[1], 'task id')
+    test:is(t[9], 345, 'second task really')
     test:is(t[5], 'work', 'task status')
     test:is(t[7], box.session.id(), 'task client id')
-    test:ok(fiber.time() >= started + 0.25, 'next event at ttr')
-    test:ok(fiber.time() < started + 0.35, 'next event at ttl')
+    test:ok(fiber.time() >= started + 0.25, 'after ttl')
+    test:ok(fiber.time() < started + 0.35, 'before timeout')
 end)
 
 
