@@ -1,0 +1,3 @@
+[submodule "megaqueue"]
+	path = megaqueue
+	url = git@github.com:dr-co/tarantool-megaqueue.git
