@@ -6,7 +6,7 @@ use Mouse;
 use JSON::XS ();
 use Carp;
 
-has space   => (is => 'ro', isa => 'Str',       required => 1);
+has space   => (is => 'ro', isa => 'Str', required => 1);
 has status  => (
     is          => 'ro',
     isa         => 'Str',
@@ -81,6 +81,20 @@ sub tuple {
         rawdata => $raw->[3],
         space   => $space,
         queue   => $queue,
+    );
+}
+
+sub tuple_messagepack {
+    my ($class, $tuple, $queue) = @_;
+    return undef unless $tuple;
+
+    $class->new(
+        id      => $tuple->{id},
+        tube    => $tuple->{tube},
+        status  => $tuple->{status},
+        rawdata => $tuple->{data},
+        queue   => $queue,
+        space   => 'MegaQueue',
     );
 }
 

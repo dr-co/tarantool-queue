@@ -1,5 +1,4 @@
 package DR::TarantoolQueue;
-use DR::Tarantool ();
 use utf8;
 use strict;
 use warnings;
@@ -10,6 +9,7 @@ require DR::TarantoolQueue::Task;
 $Carp::Internal{ (__PACKAGE__) }++;
 
 our $VERSION = '0.27';
+use feature 'state';
 
 =head1 NAME
 
@@ -51,6 +51,12 @@ Tarantool's parameters.
 =head2 connect_opts (ro)
 
 Additional options for L<DR::Tarantool>. HashRef.
+
+=head2 msgpack (ro)
+
+If true, the driver will use L<DR::Tnt> driver (C<1.6>). Also it will use
+L<tarantool-megaqueue|https://github.com/dr-co/tarantool-megaqueue> lua
+module with namespace C<queue>.
 
 =head2 coro (ro)
 
@@ -106,63 +112,87 @@ are absent (otherwise it uses the same global attributes).
 
 with 'DR::TarantoolQueue::JSE';
 
-has host    => (is => 'ro', isa => 'Maybe[Str]');
-has port    => (is => 'ro', isa => 'Maybe[Str]');
-has coro    => (is => 'ro', isa => 'Bool',  default  => 1);
+has host            => is => 'ro', isa => 'Maybe[Str]';
+has port            => is => 'ro', isa => 'Maybe[Str]';
+has user            => is => 'ro', isa => 'Maybe[Str]';
+has password        => is => 'ro', isa => 'Maybe[Str]';
 
-has ttl     => (is => 'rw', isa => 'Maybe[Num]');
-has ttr     => (is => 'rw', isa => 'Maybe[Num]');
-has pri     => (is => 'rw', isa => 'Maybe[Num]');
-has delay   => (is => 'rw', isa => 'Maybe[Num]');
-has space   => (is => 'rw', isa => 'Maybe[Str]');
-has tube    => (is => 'rw', isa => 'Maybe[Str]');
-has connect_opts => (is => 'ro', isa => 'HashRef', default => sub {{}});
+has coro            => is => 'ro', isa => 'Bool',  default  => 1;
 
-has defaults => (is => 'ro', isa => 'HashRef', default => sub {{}});
+has ttl             => is => 'rw', isa => 'Maybe[Num]';
+has ttr             => is => 'rw', isa => 'Maybe[Num]';
+has pri             => is => 'rw', isa => 'Maybe[Num]';
+has delay           => is => 'rw', isa => 'Maybe[Num]';
+has space           => is => 'rw', isa => 'Maybe[Str]';
+has tube            => is => 'rw', isa => 'Maybe[Str]';
+has connect_opts    => is => 'ro', isa => 'HashRef', default => sub {{}};
 
-has tnt     => (
+has defaults        => is => 'ro', isa => 'HashRef', default => sub {{}};
+has msgpack         => is => 'ro', isa => 'Bool', default => 0;
+
+has tnt =>
     is      => 'rw',
     isa     => 'Object',
     lazy    => 1,
     builder => sub {
         my ($self) = @_;
-        unless ($self->coro) {
-            if (DR::Tarantool->can('rsync_tarantool')) {
-                return DR::Tarantool::rsync_tarantool
-                    port => $self->port,
-                    host => $self->host,
-                    spaces => {},
-                    %{ $self->connect_opts }
-                ;
-            } else {
-                return DR::Tarantool::tarantool
-                    port => $self->port,
-                    host => $self->host,
-                    spaces => {},
-                    %{ $self->connect_opts }
-                ;
-            }
-        }
-        
-        require Coro;
-        if ($self->{tnt_waiter}) {
-            push @{ $self->{tnt_waiter} } => $Coro::current;
-            Coro::schedule();
-            return $self->tnt;
-        }
-
-        $self->{tnt_waiter} = [];
-        my $tnt = DR::Tarantool::coro_tarantool
-            port => $self->port,
-            host => $self->host,
-            spaces => {},
-            %{ $self->connect_opts }
-        ;
-        $_->ready for @{ $self->{tnt_waiter} };
-        delete $self->{tnt_waiter};
-        return $tnt;
+        return $self->_build_msgpack_tnt if $self->msgpack;
+        return $self->_build_lts_tnt;
     }
-);
+;
+
+
+sub _build_msgpack_tnt {
+    my ($self) = @_;
+    require DR::Tnt;
+
+    my $driver = 'sync';
+    $driver = 'coro' if $self->coro;
+
+    return DR::Tnt::tarantool(
+        host            => $self->host,
+        port            => $self->port,
+        user            => $self->user,
+        password        => $self->password,
+        raise_error     => 1,
+
+
+        %{ $self->connect_opts },
+
+        driver          => $driver,
+        hashify_tuples  => 1,
+        utf8            => 0,
+    )
+}
+
+sub _build_lts_tnt {
+    my ($self) = @_;
+    require DR::Tarantool;
+    unless ($self->coro) {
+        if (DR::Tarantool->can('rsync_tarantool')) {
+            return DR::Tarantool::rsync_tarantool(
+                port => $self->port,
+                host => $self->host,
+                spaces => {},
+                %{ $self->connect_opts }
+            );
+        } else {
+            return DR::Tarantool::tarantool(
+                port => $self->port,
+                host => $self->host,
+                spaces => {},
+                %{ $self->connect_opts }
+            );
+        }
+    }
+
+    return DR::Tarantool::coro_tarantool(
+        port => $self->port,
+        host => $self->host,
+        spaces => {},
+        %{ $self->connect_opts }
+    );
+}
 
 
 sub _check_opts($@) {
@@ -175,8 +205,60 @@ sub _check_opts($@) {
     }
 }
 
+sub _producer_messagepack {
+    my ($self, $method, $o) = @_;
+
+    state $alias = {
+        urgent  => 'put',
+    };
+
+    $method = $alias->{$method} if exists $alias->{$method};
+
+    _check_opts $o, qw(tube delay ttl ttr pri data domain);
+    
+    my $tube = $o->{tube};
+    $tube  = $self->tube unless defined $tube;
+    croak 'tube was not defined' unless defined $tube;
+
+    my ($ttl, $ttr, $pri, $delay);
+    for ([\$ttl, 'ttl'], [\$delay, 'delay'], [\$ttr, 'ttr'], [\$pri, 'pri']) {
+        my $rv = $_->[0];
+        my $n = $_->[1];
+
+        if (exists $o->{$n}) {
+            $$rv = $o->{$n};
+        } else {
+            if (exists $self->defaults->{ $tube }) {
+                if (exists $self->defaults->{ $tube }{ $n }) {
+                    $$rv = $self->defaults->{ $tube }{ $n };
+                } else {
+                    $$rv = $self->$n;
+                }
+            } else {
+                $$rv = $self->$n;
+            }
+        }
+        $$rv ||= 0;
+
+        $o->{ $n } = $$rv;
+
+    }
+
+    my $task = $self->tnt->call_lua(
+        ["queue:$method" => 'MegaQueue'],
+            $tube,
+            $o,
+            $self->jse->encode($o->{data})
+    );
+
+
+    DR::TarantoolQueue::Task->tuple_messagepack($task->[0], $self);
+}
+
 sub _producer {
     my ($self, $method, $o) = @_;
+
+    goto \&_producer_messagepack if $self->msgpack;
 
     _check_opts $o, qw(space tube delay ttl ttr pri data);
 
@@ -461,7 +543,7 @@ sub put {
 
 
 Enqueue an unique task. Returns new L<task|DR::TarantoolQueue::Task> object,
-if it was not enqueued previously. Otherwise it will return existing task. 
+if it was not enqueued previously. Otherwise it will return existing task.
 The list of fields with task data (C<< data => ... >>) is optional.
 
 
@@ -512,8 +594,27 @@ working on a task, the task is put back on the ready list.
 
 =cut
 
+sub _take_messagepack {
+    my ($self, %o) = @_;
+    
+    _check_opts \%o, qw(tube timeout);
+    
+    $o{tube} = $self->tube unless defined $o{tube};
+    croak 'tube was not defined' unless defined $o{tube};
+    $o{timeout} ||= 0;
+
+
+    my $tuples = $self->tnt->call_lua(
+        ['queue:take' => 'MegaQueue'] => $o{tube}, $o{timeout}
+    );
+
+    return DR::TarantoolQueue::Task->tuple_messagepack($tuples->[0], $self);
+}
+
 sub take {
     my ($self, %o) = @_;
+    goto \&_take_messagepack if $self->msgpack;
+
     _check_opts \%o, qw(space tube timeout);
     $o{space} = $self->space unless defined $o{space};
     croak 'space was not defined' unless defined $o{space};
@@ -595,32 +696,68 @@ tasks can be monitored by the queue owner, and treated specially.
 
 =cut
 
+sub _task_method_messagepack {
+    my ($self, $m, %o) = @_;
+    _check_opts \%o, qw(task id);
+    croak 'task was not defined' unless $o{task} or $o{id};
+
+    my $id;
+    if ($o{task}) {
+        $id = $o{task}->id;
+    } else {
+        $id = $o{id};
+    }
+
+    state $alias = {};
+
+    $m = $alias->{$m} if exists $alias->{$m};
+
+    my $tuples = $self->tnt->call_lua( [ "queue:$m" => 'MegaQueue' ] => $id );
+    my $task = DR::TarantoolQueue::Task->tuple_messagepack($tuples->[0], $self);
+
+    if ($m eq 'delete') {
+        $task->_set_status('removed');
+    } elsif ($m eq 'ack') {
+        $task->_set_status('ack(removed)');
+    }
+    $task;
+}
+
+sub _task_method {
+    my ($self, $m, %o) = @_;
+    
+    goto \&_task_method_messagepack if $self->msgpack;
+
+    _check_opts \%o, qw(task id space);
+    croak 'task was not defined' unless $o{task} or $o{id};
+
+    my ($id, $space);
+    if ($o{task}) {
+        ($id, $space) = ($o{task}->id, $o{task}->space);
+    } else {
+        ($id, $space) = @o{'id', 'space'};
+        $space = $self->space unless defined $o{space};
+        croak 'space is not defined' unless defined $space;
+    }
+
+    my $tuple = $self->tnt->call_lua( "queue.$m" => [ $space, $id ] );
+    my $task = DR::TarantoolQueue::Task->tuple($tuple, $space, $self);
+
+    if ($m eq 'delete') {
+        $task->_set_status('removed');
+    } elsif ($m eq 'ack') {
+        $task->_set_status('ack(removed)');
+    }
+    $task;
+}
+
+
 for my $m (qw(ack requeue bury dig unbury delete peek)) {
     no strict 'refs';
     next if *{ __PACKAGE__ . "::$m" }{CODE};
     *{ __PACKAGE__ . "::$m" } = sub {
-        my ($self, %o) = @_;
-        _check_opts \%o, qw(task id space);
-        croak 'task was not defined' unless $o{task} or $o{id};
-
-        my ($id, $space);
-        if ($o{task}) {
-            ($id, $space) = ($o{task}->id, $o{task}->space);
-        } else {
-            ($id, $space) = @o{'id', 'space'};
-            $space = $self->space unless defined $o{space};
-            croak 'space is not defined' unless defined $space;
-        }
-
-        my $tuple = $self->tnt->call_lua( "queue.$m" => [ $space, $id ] );
-        my $task = DR::TarantoolQueue::Task->tuple($tuple, $space, $self);
-
-        if ($m eq 'delete') {
-            $task->_set_status('removed');
-        } elsif ($m eq 'ack') {
-            $task->_set_status('ack(removed)');
-        }
-        $task;
+        splice @_, 1, 0, $m;
+        goto \&_task_method;
     }
 }
 

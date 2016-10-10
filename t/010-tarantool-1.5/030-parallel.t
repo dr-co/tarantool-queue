@@ -12,7 +12,11 @@ use constant PLAN => 18;
 BEGIN {
     system 'which tarantool_box >/dev/null 2>&1';
     if ($? == 0) {
-        plan tests    => PLAN;
+        if (eval "require DR::Tarantool; 1") {
+            plan tests    => PLAN;
+        } else {
+            plan skip_all => 'DR::Tarantool is not installed';
+        }
     } else {
         plan skip_all => 'tarantool_box not found';
     }
