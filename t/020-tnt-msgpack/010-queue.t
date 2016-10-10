@@ -6,7 +6,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
-use Test::More tests    => 25;
+use Test::More;
 use Encode qw(decode encode);
 
 
@@ -14,7 +14,7 @@ BEGIN {
     unless (eval 'require DR::Tnt') {
         plan skip_all => 'DR::Tnt is not installed';
     }
-
+    plan tests    => 25;
     use_ok 'DR::TarantoolQueue';
     use_ok 'DR::Tnt::Test';
     tarantool_version_check(1.6);
