@@ -1,2 +1,3 @@
-init.lua        /usr/lib/dr-tarantool-queue/
-queue.cfg	/etc/tarantool/instances.available/
+init.lua                /usr/lib/dr-tarantool-queue/
+queue.cfg	        /etc/tarantool/instances.available/
+megaqueue/megaqueue     /usr/share/tarantool/

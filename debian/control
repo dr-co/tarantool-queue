@@ -11,7 +11,7 @@ Build-Depends-Indep: libcoro-perl,
  libmouse-perl,
  libcoro-perl,
  perl,
- tarantool-lts | tarantool (>= 1.4.8+20130110)
+ tarantool-lts | tarantool (>= 1.7)
 Standards-Version: 3.9.3
 
 Package: libdr-tarantoolqueue-perl
@@ -20,7 +20,7 @@ Architecture: all
 Suggests: dr-tarantool-queue
 Depends: ${misc:Depends}, ${perl:Depends},
  libcoro-perl,
- libdr-tarantool-perl,
+ libdr-tarantool-perl | libdr-tnt-perl,
  libjson-xs-perl,
  libmouse-perl,
  liblist-moreutils-perl,
