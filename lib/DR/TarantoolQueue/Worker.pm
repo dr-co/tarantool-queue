@@ -7,6 +7,7 @@ use Mouse;
 use Coro;
 use Data::Dumper;
 use Encode qw(encode_utf8);
+use List::MoreUtils 'any';
 
 =head1 NAME
 
@@ -258,7 +259,7 @@ sub run {
                         if ($@) {
                             $debugf->("Can't send mail (%s)", $@);
                         }
-                        if ($task->status eq 'taken') {
+                        if (any { $_ eq $task->status } 'work', 'taken') {
                             eval { $task->bury };
                             if ($@) {
                                 $debugf->("Can't bury task %s: %s",
@@ -267,7 +268,7 @@ sub run {
                         }
                         next;
                     }
-                    if ($task->status eq 'taken') {
+                    if (any { $_ eq $task->status } 'work', 'taken') {
                         eval { $task->ack };
                         if ($@) {
                             $debugf->("Can't ack task %s: %s", $task->id, $@);

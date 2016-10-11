@@ -220,29 +220,33 @@ sub _producer_messagepack {
     $tube  = $self->tube unless defined $tube;
     croak 'tube was not defined' unless defined $tube;
 
-    my ($ttl, $ttr, $pri, $delay);
-    for ([\$ttl, 'ttl'], [\$delay, 'delay'], [\$ttr, 'ttr'], [\$pri, 'pri']) {
-        my $rv = $_->[0];
-        my $n = $_->[1];
+    for ('ttl', 'delay', 'ttr', 'pri') {
+        my $n = $_;
+
+        my $res;
 
         if (exists $o->{$n}) {
-            $$rv = $o->{$n};
+            $res = $o->{$n};
         } else {
             if (exists $self->defaults->{ $tube }) {
                 if (exists $self->defaults->{ $tube }{ $n }) {
-                    $$rv = $self->defaults->{ $tube }{ $n };
+                    $res = $self->defaults->{ $tube }{ $n };
                 } else {
-                    $$rv = $self->$n;
+                    $res = $self->$n;
                 }
             } else {
-                $$rv = $self->$n;
+                $res = $self->$n;
             }
         }
-        $$rv ||= 0;
-
-        $o->{ $n } = $$rv;
-
+        $res ||= 0;
+        
+        if ($res == 0) {
+            delete $o->{ $n };
+        } else {
+            $o->{ $n } = $res;
+        }
     }
+
 
     my $task = $self->tnt->call_lua(
         ["queue:$method" => 'MegaQueue'],

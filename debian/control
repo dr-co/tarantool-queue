@@ -6,6 +6,7 @@ Uploaders: Roman V. Nikolaev <rshadow@rambler.ru>
 Build-Depends: debhelper (>= 8)
 Build-Depends-Indep: libcoro-perl,
  libdr-tarantool-perl,
+ liblist-moreutils-perl,
  libjson-xs-perl,
  libmouse-perl,
  libcoro-perl,
@@ -22,6 +23,7 @@ Depends: ${misc:Depends}, ${perl:Depends},
  libdr-tarantool-perl,
  libjson-xs-perl,
  libmouse-perl,
+ liblist-moreutils-perl,
  libcoro-perl
 Homepage: http://search.cpan.org/dist/DR-TarantoolQueue/
 Description: client for tarantool's queue

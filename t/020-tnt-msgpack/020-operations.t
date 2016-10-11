@@ -6,7 +6,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
-use constant PLAN   => 63;
+use constant PLAN   => 64;
 use Test::More;
 use Encode qw(decode encode);
 use feature 'state';
@@ -35,8 +35,6 @@ my $t = start_tarantool
 ;
 
 diag $t->log unless ok $t->is_started, 'Queue was started';
-
-
 
 
 my $q = DR::TarantoolQueue->new(
@@ -143,6 +141,7 @@ for my $tube (tube_name) {
     isnt $q->peek(id => $taken->id), undef, 'task in database';
 
     ok $taken->release, 'task was released';
+    is $taken->status, 'ready', 'status';
     isnt $q->peek(id => $taken->id), undef, 'task was NOT removed';
     is $q->peek(id => $taken->id)->status, 'ready', 'status';
 }

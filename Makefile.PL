@@ -9,6 +9,7 @@ WriteMakefile(
             'DR::Tarantool'                 => 0,
             'Coro'                          => 0,
             'JSON::XS'                      => 0,
+            'List::MoreUtils'               => 0,
     },
     META_MERGE => {
         resources => {

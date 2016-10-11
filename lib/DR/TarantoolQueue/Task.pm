@@ -55,8 +55,8 @@ for my $m (qw(ack requeue bury dig unbury delete peek)) {
         my ($self) = @_;
         croak "Can't find queue for task" unless $self->queue;
         my $task = $self->queue->$m(task => $self);
-        $self->_set_status($task->status);
-        $self;
+        $self->_set_status($task->status) if $task;
+        $task;
     }
 }
 
