@@ -708,7 +708,7 @@ sub _task_method_messagepack {
         $id = $o{id};
     }
 
-    state $alias = {};
+    state $alias = { requeue => 'release' };
 
     $m = $alias->{$m} if exists $alias->{$m};
 

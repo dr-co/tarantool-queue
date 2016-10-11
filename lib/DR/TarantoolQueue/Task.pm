@@ -29,6 +29,7 @@ has data    => (
     builder     => '_build_data',
     clearer     => '_clean_data'
 );
+has domain  =>  is => 'ro', isa => 'Maybe[Str]';
 
 has queue   => (is => 'ro', isa => 'Object|Undef', weak_ref => 1);
 
@@ -93,6 +94,7 @@ sub tuple_messagepack {
         tube    => $tuple->{tube},
         status  => $tuple->{status},
         rawdata => $tuple->{data},
+        domain  => $tuple->{domain},
         queue   => $queue,
         space   => 'MegaQueue',
     );
