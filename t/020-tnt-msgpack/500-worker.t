@@ -6,7 +6,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
-use constant PLAN   => 29;
+use constant PLAN   => 27;
 use Test::More;
 use Encode qw(decode encode);
 use feature 'state';
@@ -44,8 +44,6 @@ BEGIN {
 
     use_ok 'DR::TarantoolQueue';
     use_ok 'Coro';
-    use_ok 'DR::Tarantool', ':all';
-    use_ok 'DR::Tarantool::StartTest';
     use_ok 'Time::HiRes', 'time';
     use_ok 'Coro::AnyEvent';
     use_ok 'DR::TarantoolQueue::Worker';
