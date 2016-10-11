@@ -6,15 +6,14 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
-use constant PLAN   => 64;
+use constant PLAN   => 66;
 use Test::More;
 use Encode qw(decode encode);
 use feature 'state';
 
 sub tube_name() {
     state $no = 1;
-    $no++;
-    sprintf 'test_tube_%02x', $no;
+    sprintf 'test_tube_%02X', $no++;
 }
 
 
@@ -186,3 +185,12 @@ for my $tube (tube_name) {
     ok $dig->delete, 'task was removed';
     is $q->peek(id => $dig->id), undef, 'was removed really';
 }
+
+note 'stats';
+is_deeply $q->statistics(tube => 'unknown'), {}, 'unknown tube statistics';
+is_deeply $q->statistics(tube => 'test_tube_01'),
+    { test_tube_01 => { ready => 1 } },
+    'first test tube';
+
+
+

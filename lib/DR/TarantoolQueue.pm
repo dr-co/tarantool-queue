@@ -376,8 +376,22 @@ included in the output.
 
 =cut
 
+sub _statistics_msgpack {
+    my ($self, %o) = @_;
+
+    _check_opts \%o, qw(tube);
+
+    my $list = $self->tnt->call_lua(
+        ["queue:stats" => 'MegaQueueStats'], $o{tube}
+    );
+
+    my %res = map { ($_->{tube}, $_->{counters})  } @$list;
+    return \%res;
+}
+
 sub statistics {
     my ($self, %o) = @_;
+    goto \&_statistics_msgpack if $self->msgpack;
     _check_opts \%o, qw(space tube);
     unless (exists $o{space}) {
         $o{space} = $self->space if ref $self;
@@ -397,6 +411,8 @@ sub statistics {
     )->raw;
     return { @$raw };
 }
+
+
 
 
 =head2 get_meta
