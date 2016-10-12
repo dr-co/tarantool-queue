@@ -15,14 +15,12 @@ debian/libdr-tarantoolqueue-perl.install
 debian/rules
 debian/source/format
 debian/watch
-init.lua
 lib/DR/TarantoolQueue/JSE.pm
 lib/DR/TarantoolQueue.pm
 lib/DR/TarantoolQueue/Task.pm
 lib/DR/TarantoolQueue/Worker.pm
 Makefile.PL
 MANIFEST
-megaqueue/.git
 megaqueue/megaqueue/init.lua
 megaqueue/megaqueue/migrations.lua
 megaqueue/megaqueue/stats.lua
@@ -47,7 +45,9 @@ megaqueue/t/120-on-disconnect.t
 megaqueue/t/500-stats.t
 megaqueue/.travis.yml
 megaqueue/t/tnt/init.lua
-README.md
+queue-lts/queue/init.lua
+queue-lts/README.md
+queue-lts/tarantool.cfg
 t/010-tarantool-1.5/000-queue.t
 t/010-tarantool-1.5/010-dr-tqueue.t
 t/010-tarantool-1.5/020-worker.t
@@ -58,4 +58,3 @@ t/020-tnt-msgpack/025-delay.t
 t/020-tnt-msgpack/030-stress.t
 t/020-tnt-msgpack/500-worker.t
 t/020-tnt-msgpack/lua/queue.lua
-tarantool.cfg
