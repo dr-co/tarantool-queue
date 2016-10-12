@@ -6,7 +6,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
-use constant PLAN   => 18;
+use constant PLAN   => 19;
 use Test::More;
 use Encode qw(decode encode);
 use feature 'state';
@@ -54,6 +54,8 @@ my $q = DR::TarantoolQueue->new(
         }
     }
 );
+
+ok $q->tnt->ping, 'ping';
 
 for (+ note 'delay') {
     my $started = time;
