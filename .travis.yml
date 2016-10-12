@@ -17,5 +17,5 @@ before_install:
   - sudo apt-get -qq install apt-transport-https
   - echo deb https://packagecloud.io/tarantool/1_7/`lsb_release -i -s|perl -p -e 's/.*/lc $&/ge'`/ `lsb_release -c -s` main|sudo tee /etc/apt/sources.list.d/tarantool.list
   - sudo apt-get -qq update
-  - sudo apt-get -qq install tarantool
+  - sudo apt-get -qq install tarantool tarantool-lts
   - tarantool --version
