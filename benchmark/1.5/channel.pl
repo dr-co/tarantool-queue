@@ -19,7 +19,7 @@ use Data::Dumper;
 
 my $t = DR::Tarantool::StartTest->run(
     cfg         => catfile(cwd, 'queue-lts/tarantool.cfg'),
-    script_dir  => catfile(cwd, 'benchmark')
+    script_dir  => catfile(cwd, 'benchmark/1.5')
 );
 
 sub tnt {
