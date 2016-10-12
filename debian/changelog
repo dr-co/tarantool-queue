@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.32) nowtaxi; urgency=medium
+
+  * New debian package after all reorganisations.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Wed, 12 Oct 2016 16:11:16 +0300
+
 dr-tarantool-queue (0.31) nowtaxi; urgency=medium
 
   * Add some tests and use fixed release method.
