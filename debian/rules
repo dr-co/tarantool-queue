@@ -14,11 +14,13 @@ override_dh_install:
 	install -m 0644 queue-lts/tarantool.cfg queue.cfg
 	echo >> queue.cfg
 	echo script_dir = /usr/lib/dr-tarantool-queue/ >> queue.cfg
+	install -m 0644 megaqueue/example/instance-queue.lua queue-example.lua 
 	dh_install
 	make tardist
 
 override_dh_clean:
 	rm -f queue.cfg
+	rm -f queue-example.lua
 	rm -f DR-TarantoolQueue-?.??.tar.gz
 	dh_clean
 
