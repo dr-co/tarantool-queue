@@ -4,8 +4,8 @@
 
 DR::TarantoolQueue is a Perl driver for
 
-- tarantool 1.6 [megaqueue](https://github.com/dr-co/tarantool-megaqueue)
-- tarantool 1.5 queue [legacy queue](https://github.com/dr-co/tarantool-lts-queue)
+- tarantool `1.6+`: [megaqueue](https://github.com/dr-co/tarantool-megaqueue)
+- tarantool `1.5`: [legacy queue](https://github.com/dr-co/tarantool-lts-queue)
 
 
 Both projects are included here as `git-submodule`.
