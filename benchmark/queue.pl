@@ -19,8 +19,8 @@ use Data::Dumper;
 use Coro::AnyEvent;
 
 my $t = DR::Tarantool::StartTest->run(
-    cfg         => catfile(cwd, 'tarantool.cfg'),
-    script_dir  => catfile(cwd)
+    cfg         => catfile(cwd, 'queue-lts/tarantool.cfg'),
+    script_dir  => catfile(cwd, 'queue-lts/queue')
 );
 
 sub tnt {

@@ -18,7 +18,7 @@ use Time::HiRes 'time';
 use Data::Dumper;
 
 my $t = DR::Tarantool::StartTest->run(
-    cfg         => catfile(cwd, 'tarantool.cfg'),
+    cfg         => catfile(cwd, 'queue-lts/tarantool.cfg'),
     script_dir  => catfile(cwd, 'benchmark')
 );
 
