@@ -96,7 +96,7 @@ for (1 .. 10){
         async {
             my ($no) = @_;
             my $q = $workers[ int rand @workers ];
-            $q->queue->put(data => [ $no ]);
+            $q->queue->[0]->put(data => [ $no ]);
         } $_;
     }
 

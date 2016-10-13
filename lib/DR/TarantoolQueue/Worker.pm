@@ -8,6 +8,7 @@ use Coro;
 use Data::Dumper;
 use Encode qw(encode_utf8);
 use List::MoreUtils 'any';
+with 'DR::TarantoolQueue::Worker::QueueList';
 
 =head1 NAME
 
@@ -73,13 +74,12 @@ function uses L<Coro> and Your queue uses L<Coro>, too.
 has count       => isa => 'Num',                is => 'rw', default => 1;
 
 
-=head2 queue
+=head2 queues
 
-Ref to Your queue.
+List of queues.
 
 =cut
 
-has queue       => isa => 'DR::TarantoolQueue', is => 'ro', required => 1;
 
 =head2 space & tube
 
@@ -231,49 +231,51 @@ sub run {
         ($no, @f) = (0);
 
         for (1 .. $self->count) {
-            push @f => async {
-                while($self->is_run and !$self->is_stopping) {
-                    last if $self->restart and $no >= $self->restart_limit;
-                    last if $self->restart and $self->restart_check->();
-                    my $task = $self->queue->take(
-                        defined($self->space) ? (space => $self->space) : (),
-                        defined($self->tube)  ? (tube  => $self->tube)  : (),
-                        timeout => $self->timeout,
-                    );
-                    next unless $task;
+            for my $q (@{ $self->queue }) {
+                push @f => async {
+                    while($self->is_run and !$self->is_stopping) {
+                        last if $self->restart and $no >= $self->restart_limit;
+                        last if $self->restart and $self->restart_check->();
+                        my $task = $q->take(
+                            defined($self->space) ? (space => $self->space) : (),
+                            defined($self->tube)  ? (tube  => $self->tube)  : (),
+                            timeout => $self->timeout,
+                        );
+                        next unless $task;
 
-                    $no++;
-                    eval {
-                        $cb->( $task, $self->queue, $no );
-                    };
-
-                    if ($@) {
-                        my $err = $@;
-                        $debugf->('Worker was died (%s)', $@);
+                        $no++;
                         eval {
-                            $self->sendmail(
-                                $task,
-                                sprintf "Worker was died: %s", $err
-                            );
+                            $cb->( $task, $q, $no );
                         };
+
                         if ($@) {
-                            $debugf->("Can't send mail (%s)", $@);
+                            my $err = $@;
+                            $debugf->('Worker was died (%s)', $@);
+                            eval {
+                                $self->sendmail(
+                                    $task,
+                                    sprintf "Worker was died: %s", $err
+                                );
+                            };
+                            if ($@) {
+                                $debugf->("Can't send mail (%s)", $@);
+                            }
+                            if (any { $_ eq $task->status } 'work', 'taken') {
+                                eval { $task->bury };
+                                if ($@) {
+                                    $debugf->("Can't bury task %s: %s",
+                                        $task->id, $@);
+                                }
+                            }
+                            next;
                         }
                         if (any { $_ eq $task->status } 'work', 'taken') {
-                            eval { $task->bury };
+                            eval { $task->ack };
                             if ($@) {
-                                $debugf->("Can't bury task %s: %s",
-                                    $task->id, $@);
+                                $debugf->("Can't ack task %s: %s", $task->id, $@);
                             }
+                            next;
                         }
-                        next;
-                    }
-                    if (any { $_ eq $task->status } 'work', 'taken') {
-                        eval { $task->ack };
-                        if ($@) {
-                            $debugf->("Can't ack task %s: %s", $task->id, $@);
-                        }
-                        next;
                     }
                 }
             }
