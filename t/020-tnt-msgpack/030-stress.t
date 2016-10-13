@@ -62,7 +62,9 @@ for my $i (0 .. 99) {
             test_tube   => {
                 ttl         => 80
             }
-        }
+        },
+
+        fake_in_test    => 0,
     );
 
     $q->tnt->ping;

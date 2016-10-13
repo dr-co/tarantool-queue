@@ -6,7 +6,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
-use constant PLAN   => 27;
+use constant PLAN   => 28;
 use Test::More;
 use Encode qw(decode encode);
 
@@ -46,10 +46,12 @@ my $q = DR::TarantoolQueue->new(
         test_tube   => {
             ttl         => 80
         }
-    }
+    },
+    fake_in_test    => 0,
 );
 
 ok $q->tnt->ping, 'ping';
+is $q->_fake_msgpack_tnt, undef, 'Do not use fake queue';
 
 for ('put', 'urgent') {
     my $task1 = $q->$_;

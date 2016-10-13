@@ -130,69 +130,8 @@ has connect_opts    => is => 'ro', isa => 'HashRef', default => sub {{}};
 has defaults        => is => 'ro', isa => 'HashRef', default => sub {{}};
 has msgpack         => is => 'ro', isa => 'Bool', default => 0;
 
-has tnt =>
-    is      => 'rw',
-    isa     => 'Object',
-    lazy    => 1,
-    builder => sub {
-        my ($self) = @_;
-        return $self->_build_msgpack_tnt if $self->msgpack;
-        return $self->_build_lts_tnt;
-    }
-;
-
-
-sub _build_msgpack_tnt {
-    my ($self) = @_;
-    require DR::Tnt;
-
-    my $driver = 'sync';
-    $driver = 'coro' if $self->coro;
-
-    return DR::Tnt::tarantool(
-        host            => $self->host,
-        port            => $self->port,
-        user            => $self->user,
-        password        => $self->password,
-        raise_error     => 1,
-
-
-        %{ $self->connect_opts },
-
-        driver          => $driver,
-        hashify_tuples  => 1,
-        utf8            => 0,
-    )
-}
-
-sub _build_lts_tnt {
-    my ($self) = @_;
-    require DR::Tarantool;
-    unless ($self->coro) {
-        if (DR::Tarantool->can('rsync_tarantool')) {
-            return DR::Tarantool::rsync_tarantool(
-                port => $self->port,
-                host => $self->host,
-                spaces => {},
-                %{ $self->connect_opts }
-            );
-        } else {
-            return DR::Tarantool::tarantool(
-                port => $self->port,
-                host => $self->host,
-                spaces => {},
-                %{ $self->connect_opts }
-            );
-        }
-    }
-
-    return DR::Tarantool::coro_tarantool(
-        port => $self->port,
-        host => $self->host,
-        spaces => {},
-        %{ $self->connect_opts }
-    );
-}
+# если $0 =~ /\.t$/ то будет запускать фейковый тарантул
+has fake_in_test    => is => 'ro', isa => 'Bool', default => 1;
 
 
 sub _check_opts($@) {
@@ -872,5 +811,7 @@ it under the same terms as Perl itself, either Perl version 5.8.8 or,
 at your option, any later version of Perl 5 you may have available.
 
 =cut
+
+with 'DR::TarantoolQueue::Tnt';
 
 __PACKAGE__->meta->make_immutable();

@@ -52,7 +52,8 @@ for my $coro (0, 1) {
             test_tube   => {
                 ttl         => 80
             }
-        }
+        },
+        fake_in_test    => 0,
     );
 
     ok $q->tnt->ping, 'ping';

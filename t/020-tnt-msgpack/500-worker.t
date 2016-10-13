@@ -65,6 +65,7 @@ my $q = DR::TarantoolQueue->new(
     msgpack     => 1,
     tube        => 'test_queue',
     coro        => 1,
+    fake_in_test    => 0,
 );
 
 isa_ok $q => 'DR::TarantoolQueue';
