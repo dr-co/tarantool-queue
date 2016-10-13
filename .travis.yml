@@ -11,6 +11,7 @@ git:
 
 before_install:
   - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+  - cat .gitmodules
   - git submodule update --init --recursive
   - lsb_release -c -s
   - curl -s http://download.tarantool.org/tarantool/1.7/gpgkey | sudo apt-key add -
