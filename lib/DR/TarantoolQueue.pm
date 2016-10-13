@@ -8,7 +8,7 @@ use JSON::XS;
 require DR::TarantoolQueue::Task;
 $Carp::Internal{ (__PACKAGE__) }++;
 
-our $VERSION = '0.32';
+our $VERSION = '0.33';
 use feature 'state';
 
 =head1 NAME
@@ -51,6 +51,24 @@ Tarantool's parameters.
 =head2 connect_opts (ro)
 
 Additional options for L<DR::Tarantool>. HashRef.
+
+=head2 fake_in_test (ro, default=true)
+
+Start fake tarantool (only for msgpack) if C<($0 =~ /\.t$/)>.
+
+For the case the driver uses the following lua code:
+    
+    log.info('Fake Queue starting')
+    
+    box.cfg{ listen  = os.getenv('PRIMARY_PORT') }
+    
+    box.schema.user.create('test', { password = 'test' })
+    box.schema.user.grant('test', 'read,write,execute', 'universe')
+    
+    _G.queue = require('megaqueue')
+    queue:init()
+    
+    log.info('Fake Queue started')
 
 =head2 msgpack (ro)
 

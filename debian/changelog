@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.33) nowtaxi; urgency=medium
+
+  * Add fake_in_test option (default = true).
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Thu, 13 Oct 2016 12:56:02 +0300
+
 dr-tarantool-queue (0.32) nowtaxi; urgency=medium
 
   * New debian package after all reorganisations.
