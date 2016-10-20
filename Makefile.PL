@@ -14,8 +14,9 @@ WriteMakefile(
     },
     META_MERGE => {
         resources => {
-            homepage   => 'https://github.com/mailru/tarantool-queue',
-            bugtracker => 'https://github.com/mailru/tarantool-queue/issues',
+            homepage   => 'https://github.com/dr-co/tarantool-queue',
+            repository => 'https://github.com/dr-co/tarantool-queue',
+            bugtracker => 'https://github.com/dr-co/tarantool-queue/issues',
         }
     },
     test    => {
