@@ -585,6 +585,12 @@ sub _take_messagepack {
         ['queue:take' => 'MegaQueue'] => $o{tube}, $o{timeout}
     );
 
+    if (@$tuples and $tuples->[0]{tube} ne $o{tube}) {
+        warn sprintf "take(%s, timeout => %s) returned task.tube == %s\n",
+            $o{tube},
+            $o{timeout} // 'undef',
+            $tuples->[0]{tube} // 'undef';
+    }
     return DR::TarantoolQueue::Task->tuple_messagepack($tuples->[0], $self);
 }
 
