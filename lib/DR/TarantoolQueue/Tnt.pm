@@ -22,7 +22,10 @@ has _fake_msgpack_tnt =>
             -port       => DR::Tnt::Test::free_port(),
             -make_lua   => q{
                 require('log').info('Fake Queue starting')
-                box.cfg{ listen  = os.getenv('PRIMARY_PORT') }
+                box.cfg{
+                    listen      = os.getenv('PRIMARY_PORT'),
+                    readahead   = 101024
+                }
                 box.schema.user.create('test', { password = 'test' })
                 box.schema.user.grant('test', 'read,write,execute', 'universe')
                 _G.queue = require('megaqueue')
