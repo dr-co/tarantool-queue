@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.34) nowtaxi; urgency=medium
+
+  * Fix q:take collision with several tubes.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Mon, 31 Oct 2016 16:46:40 +0300
+
 dr-tarantool-queue (0.33) nowtaxi; urgency=medium
 
   * Add fake_in_test option (default = true).
