@@ -14,6 +14,7 @@ coerce QueueList => from 'Undef', via { [] };
 coerce QueueList =>
     from 'ArrayRef',
     via {[ map { blessed $_ ? $_ : DR::TarantoolQueue->new($_) } @$_ ]};
+coerce QueueList => from 'HashRef', via { DR::TarantoolQueue->new($_) };
 
 no Mouse::Util::TypeConstraints;
 
