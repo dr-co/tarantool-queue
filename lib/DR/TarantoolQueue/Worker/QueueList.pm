@@ -5,11 +5,15 @@ package DR::TarantoolQueue::Worker::QueueList;
 use Mouse::Role;
 
 use Mouse::Util::TypeConstraints;
+use Scalar::Util 'blessed';
 
 subtype QueueList => as 'ArrayRef[DR::TarantoolQueue]';
 
 coerce QueueList => from 'DR::TarantoolQueue', via { [ $_ ] };
 coerce QueueList => from 'Undef', via { [] };
+coerce QueueList =>
+    from 'ArrayRef',
+    via {[ map { blessed $_ ? $_ : DR::TarantoolQueue->new($_) } @$_ ]};
 
 no Mouse::Util::TypeConstraints;
 
