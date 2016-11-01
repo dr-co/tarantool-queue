@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.39) nowtaxi; urgency=medium
+
+  * require Queue if need.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Tue, 01 Nov 2016 18:12:18 +0300
+
 dr-tarantool-queue (0.38) nowtaxi; urgency=medium
 
   * fake tarantool_lts connection for tests.

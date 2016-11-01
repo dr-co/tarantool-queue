@@ -13,7 +13,10 @@ coerce QueueList => from 'DR::TarantoolQueue', via { [ $_ ] };
 coerce QueueList => from 'Undef', via { [] };
 coerce QueueList =>
     from 'ArrayRef',
-    via {[ map { blessed $_ ? $_ : DR::TarantoolQueue->new($_) } @$_ ]};
+    via {
+        require DR::TarantoolQueue;
+        [ map { blessed $_ ? $_ : DR::TarantoolQueue->new($_) } @$_ ]
+    };
 
 no Mouse::Util::TypeConstraints;
 
