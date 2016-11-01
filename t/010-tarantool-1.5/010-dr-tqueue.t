@@ -50,18 +50,20 @@ my $t = DR::Tarantool::StartTest->run(
 
 
 my $q = DR::TarantoolQueue->new(
-    host    => '127.0.0.1',
-    port    => $t->primary_port,
-    space   => 0,
-    tube    => 'test_queue',
+    host            => '127.0.0.1',
+    port            => $t->primary_port,
+    space           => 0,
+    tube            => 'test_queue',
+    fake_in_test    => 0,
 );
 
 my $qs = DR::TarantoolQueue->new(
-    host    => '127.0.0.1',
-    port    => $t->primary_port,
-    space   => 0,
-    tube    => 'test_queue',
-    coro    => 0
+    host            => '127.0.0.1',
+    port            => $t->primary_port,
+    space           => 0,
+    tube            => 'test_queue',
+    coro            => 0,
+    fake_in_test    => 0,
 );
 
 isa_ok $q => 'DR::TarantoolQueue';

@@ -41,6 +41,35 @@ has _fake_msgpack_tnt =>
         return $t;
     };
 
+has _fake_lts_tnt =>
+    is      => 'rw',
+    isa     => 'Maybe[Object]',
+    lazy    => 1,
+    builder => sub {
+        my ($self) = @_;
+        return undef unless $self->fake_in_test;
+        return undef unless $0 =~ /\.t$/;
+
+        require DR::Tarantool::StartTest;
+
+        die "'/etc/tarantool/instances.available/queue.cfg' is not found"
+            unless -r '/etc/tarantool/instances.available/queue.cfg';
+        die "dir '/usr/lib/dr-tarantool-queue' is absent"
+            unless -d '/usr/lib/dr-tarantool-queue';
+
+        my $t = DR::Tarantool::StartTest->run(
+                script_dir  => '/usr/lib/dr-tarantool-queue',
+                cfg         => '/etc/tarantool/instances.available/queue.cfg',
+                slab_alloc_arena => 0.3
+        );
+
+        unless ($t->started) {
+            warn $t->log;
+            die "Can't start fake tarantool\n";
+        }
+        return $t;
+    };
+
 
 has tnt =>
     is      => 'rw',
@@ -91,18 +120,25 @@ sub _build_msgpack_tnt {
 sub _build_lts_tnt {
     my ($self) = @_;
     require DR::Tarantool;
+
+    my ($host, $port) = ($self->host, $self->port);
+    if ($self->_fake_lts_tnt) {
+        $host = '127.0.0.1';
+        $port = $self->_fake_lts_tnt->primary_port;
+    }
+
     unless ($self->coro) {
         if (DR::Tarantool->can('rsync_tarantool')) {
             return DR::Tarantool::rsync_tarantool(
-                port => $self->port,
-                host => $self->host,
+                port => $port,
+                host => $host,
                 spaces => {},
                 %{ $self->connect_opts }
             );
         } else {
             return DR::Tarantool::tarantool(
-                port => $self->port,
-                host => $self->host,
+                port => $port,
+                host => $host,
                 spaces => {},
                 %{ $self->connect_opts }
             );
@@ -110,8 +146,8 @@ sub _build_lts_tnt {
     }
 
     return DR::Tarantool::coro_tarantool(
-        port => $self->port,
-        host => $self->host,
+        port => $port,
+        host => $host,
         spaces => {},
         %{ $self->connect_opts }
     );
