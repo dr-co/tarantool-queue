@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.41) nowtaxi; urgency=medium
+
+  * New debian package (fixed bury stats)
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Wed, 02 Nov 2016 19:07:56 +0300
+
 dr-tarantool-queue (0.40) nowtaxi; urgency=medium
 
   * Old and new drivers can receive one argument list.
