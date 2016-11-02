@@ -8,7 +8,7 @@ use JSON::XS;
 require DR::TarantoolQueue::Task;
 $Carp::Internal{ (__PACKAGE__) }++;
 
-our $VERSION = '0.39';
+our $VERSION = '0.40';
 use feature 'state';
 
 =head1 NAME
@@ -171,7 +171,7 @@ sub _producer_messagepack {
 
     $method = $alias->{$method} if exists $alias->{$method};
 
-    _check_opts $o, qw(tube delay ttl ttr pri data domain);
+    _check_opts $o, qw(space tube delay ttl ttr pri data domain);
     
     my $tube = $o->{tube};
     $tube  = $self->tube unless defined $tube;
@@ -221,7 +221,7 @@ sub _producer {
 
     goto \&_producer_messagepack if $self->msgpack;
 
-    _check_opts $o, qw(space tube delay ttl ttr pri data);
+    _check_opts $o, qw(space tube delay ttl ttr pri data domain);
 
     my $space = $o->{space};
     $space = $self->space unless defined $space;

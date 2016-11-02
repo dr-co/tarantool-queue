@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.40) nowtaxi; urgency=medium
+
+  * Old and new drivers can receive one argument list.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Wed, 02 Nov 2016 15:38:23 +0300
+
 dr-tarantool-queue (0.39) nowtaxi; urgency=medium
 
   * require Queue if need.
