@@ -12,7 +12,7 @@ Build-Depends-Indep: libcoro-perl,
  libcoro-perl,
  perl,
  tarantool-lts | tarantool (>= 1.7)
-Standards-Version: 3.9.3
+Standards-Version: 3.9.6
 
 Package: libdr-tarantoolqueue-perl
 Section: perl
