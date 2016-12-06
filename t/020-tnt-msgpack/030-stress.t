@@ -115,7 +115,8 @@ for (1 .. 10){
 
     cmp_ok $rs, '>', BLOCK, 'some tasks was processed more than one times';
 
-    cmp_ok $rs / $time, '>=', 300, 'RPS more than 300';
+    cmp_ok $rs / $time, '>=', 200, sprintf 'RPS more than 200 (%3.2f)',
+        $rs / $time;
 
     %res = ();
 };

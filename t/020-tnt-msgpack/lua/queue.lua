@@ -2,7 +2,7 @@ local log = require 'log'
 local json = require 'json'
 local fio = require 'fio'
 
-box.cfg{ listen  = os.getenv('PRIMARY_PORT') }
+box.cfg{ listen  = os.getenv('PRIMARY_PORT'), readahead = 10240000 }
 
 box.schema.user.create('test', { password = 'test' })
 box.schema.user.grant('test', 'read,write,execute', 'universe')
