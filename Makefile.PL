@@ -11,6 +11,8 @@ WriteMakefile(
             'Coro'                          => 0,
             'JSON::XS'                      => 0,
             'List::MoreUtils'               => 0,
+            'MIME::Base64'                  => 0,
+            'Compress::Zlib'                => 0,
     },
     META_MERGE => {
         resources => {
