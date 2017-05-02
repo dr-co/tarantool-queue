@@ -26,8 +26,15 @@ has data    => (
     is          => 'ro',
     isa         => 'HashRef|ArrayRef|Str|Undef',
     lazy        => 1,
-    builder     => '_build_data',
-    clearer     => '_clean_data'
+    clearer     => '_clean_data',
+    builder     => sub {
+        my ($self) = @_;
+        return undef unless defined $self->rawdata;
+
+        my $res = eval { $self->jse->decode( $self->rawdata ) };
+        warn $@ if $@;
+        return $res;
+    }
 );
 has domain  =>  is => 'ro', isa => 'Maybe[Str]';
 
@@ -37,16 +44,6 @@ with 'DR::TarantoolQueue::JSE';
 
 
 $Carp::Internal{ (__PACKAGE__) }++;
-
-sub _build_data {
-    my ($self) = @_;
-    return undef unless defined $self->rawdata;
-
-    my $res = eval { $self->jse->decode( $self->rawdata ) };
-    warn $@ if $@;
-    return $res;
-}
-
 
 for my $m (qw(ack requeue bury dig unbury delete peek)) {
     no strict 'refs';

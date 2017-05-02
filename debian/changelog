@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.43) nowtaxi; urgency=medium
+
+  * Queue uses gzip/gunzip data if len(data) > 1M.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Tue, 02 May 2017 13:35:56 +0300
+
 dr-tarantool-queue (0.42) nowtaxi; urgency=medium
 
   * MegaQueue uses consumer's space.
