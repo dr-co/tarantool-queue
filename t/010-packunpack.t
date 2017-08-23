@@ -6,7 +6,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib t/lib);
 
-use Test::More tests    => 9;
+use Test::More tests    => 10;
 use Encode qw(decode encode);
 
 
@@ -72,3 +72,22 @@ subtest 'special characters' => sub {
     unlike $p->encode($test), qr{^base64:}, 'packed';
     is_deeply $p->decode($p->encode($test)), $test, 'decode';
 };
+
+
+subtest 'blessed' => sub {
+    plan tests => 1;
+    my $o = bless { a => 'b' } => 'TstP';
+    is $p->encode($o), '{"a":"b"}', 'encode';
+};
+
+package TstP;
+
+sub TO_JSON {
+    return { %{ $_[0] } }
+}
+
+sub encode {
+    die 123;
+}
+
+1;

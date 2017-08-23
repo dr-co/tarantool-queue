@@ -14,7 +14,12 @@ has jsp =>
     isa     => 'Object',
     lazy    => 1,
     builder => sub {
-        return JSON::XS->new->allow_nonref->utf8;
+        return JSON::XS
+                -> new
+                -> allow_nonref
+                -> allow_blessed
+                -> convert_blessed
+                -> utf8;
     }
 ;
 
