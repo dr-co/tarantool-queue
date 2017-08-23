@@ -32,4 +32,6 @@ tarball: clean
 		$(pkt)-$(vdeb)
 
 manifest: clean
-	find -type f|grep -v '\.git'|sed 's/^..//'|sort -u > MANIFEST
+	git ls-files > MANIFEST
+	cd megaqueue && git ls-files |sed 's#^#manifest/#'  >> ../MANIFEST
+	cd queue-lts && git ls-files |sed 's@^#queue-lts/#' >> ../MANIFEST
