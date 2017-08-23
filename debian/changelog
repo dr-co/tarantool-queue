@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.45) nowtaxi; urgency=medium
+
+  * Update MegaQueue to master version.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Fri, 27 Oct 2017 17:32:04 +0300
+
 dr-tarantool-queue (0.44) nowtaxi; urgency=medium
 
   * allow_blessed for json pack/unpack.
