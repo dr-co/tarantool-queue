@@ -71,16 +71,43 @@ has _fake_lts_tnt =>
     };
 
 
-has tnt =>
-    is      => 'rw',
-    isa     => 'Object',
-    lazy    => 1,
-    builder => sub {
-        my ($self) = @_;
-        return $self->_build_msgpack_tnt if $self->msgpack;
-        return $self->_build_lts_tnt;
+sub tnt {
+    my ($self) = @_;
+    return $self->{tnt} if $self->{tnt};
+
+    if ($self->coro) {
+        require Coro;
+        no warnings 'once';
+        my $current = $Coro::current;
+        $self->{tntw} ||= [];
+        push @{ $self->{tntw} } => $current;
+
+        if (@{ $self->{tntw} } == 1) {
+            if ($self->msgpack) {
+                $self->{tnt} = $self->_build_msgpack_tnt;
+            } else {
+                $self->{tnt} = $self->_build_lts_tnt;
+            }
+            my $w = delete $self->{tntw};
+            shift @$w;
+            while (@$w) {
+                my $c = shift @$w;
+                $c->ready;
+            }
+        } else {
+            Coro::schedule();
+        }
+
+    } else {
+        if ($self->msgpack) {
+            $self->{tnt} = $self->_build_msgpack_tnt;
+        } else {
+            $self->{tnt} = $self->_build_lts_tnt;
+        }
     }
-;
+
+    $self->{tnt};
+}
 
 sub _build_msgpack_tnt {
     my ($self) = @_;
