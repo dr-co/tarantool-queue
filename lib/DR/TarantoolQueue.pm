@@ -8,7 +8,7 @@ use JSON::XS;
 require DR::TarantoolQueue::Task;
 $Carp::Internal{ (__PACKAGE__) }++;
 
-our $VERSION = '0.46';
+our $VERSION = '0.47';
 use feature 'state';
 
 =head1 NAME

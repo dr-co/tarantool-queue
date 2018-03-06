@@ -71,6 +71,13 @@ has _fake_lts_tnt =>
     };
 
 
+sub BUILD {
+    my ($self, $args) = @_;
+    if ('HASH' eq ref $args) {
+        $self->{tnt} = $args->{tnt} if exists $args->{tnt};
+    }
+}
+
 sub tnt {
     my ($self) = @_;
     return $self->{tnt} if $self->{tnt};

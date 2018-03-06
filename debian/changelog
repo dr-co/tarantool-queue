@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.47) nowtaxi; urgency=medium
+
+  * TarantoolQueue constructor allows `tnt` attribute. 
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Tue, 06 Mar 2018 14:32:23 +0300
+
 dr-tarantool-queue (0.46) nowtaxi; urgency=medium
 
   * Coro connector uses real singletone.
