@@ -41,7 +41,11 @@ sub decode {
 
     return undef unless defined $data;
 
-    return $self->jsp->decode($data) unless $data =~ /^base64:/;
+    unless ($data =~ /^base64:/) {
+        my $str = $data;
+        utf8::encode $str if utf8::is_utf8 $str;
+        return $self->jsp->decode($str);
+    }
     my $raw = decode_base64 substr $data, 7;
 
     $raw = Compress::Zlib::memGunzip($raw);

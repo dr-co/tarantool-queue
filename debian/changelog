@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.48) nowtaxi; urgency=medium
+
+  * Pack & unpack UTF8 properly. 
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Fri, 23 Mar 2018 14:50:22 +0300
+
 dr-tarantool-queue (0.47) nowtaxi; urgency=medium
 
   * TarantoolQueue constructor allows `tnt` attribute. 
