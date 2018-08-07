@@ -7,8 +7,7 @@ use Carp;
 use JSON::XS;
 require DR::TarantoolQueue::Task;
 $Carp::Internal{ (__PACKAGE__) }++;
-
-our $VERSION = '0.49';
+our $VERSION = '0.50';
 use feature 'state';
 
 =head1 NAME
@@ -204,12 +203,14 @@ sub _producer_messagepack {
         }
     }
 
+    my %o = %$o;
 
+    my $data = delete $o{data};
     my $task = $self->tnt->call_lua(
         ["queue:$method" => 'MegaQueue'],
             $tube,
-            $o,
-            $self->jse->encode($o->{data})
+            \%o,
+            $self->jse->encode($data)
     );
 
 
@@ -368,9 +369,6 @@ sub statistics {
     )->raw;
     return { @$raw };
 }
-
-
-
 
 =head2 get_meta
 
