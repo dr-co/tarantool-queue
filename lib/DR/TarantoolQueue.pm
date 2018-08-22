@@ -7,7 +7,7 @@ use Carp;
 use JSON::XS;
 require DR::TarantoolQueue::Task;
 $Carp::Internal{ (__PACKAGE__) }++;
-our $VERSION = '0.50';
+our $VERSION = '0.51';
 use feature 'state';
 
 =head1 NAME
@@ -120,6 +120,25 @@ the following fields:
 
 =item pri
 
+=item domain
+
+subqueue. Only one task with the same domain can be taken.
+C<undef> and empty string are equal (disable domain mechanizm)
+
+=item inspect
+
+If the task has non-empty C<domain> and C<inspect=1>, then
+the task will ready after all task with the same domain.
+
+Example:
+
+    queue->put(tube => 't', data => 1, domain => 'abc');
+    queue->put(tube => 't', data => 2, domain => 'abc');
+    # inspector that 'abc' subqueue is empty
+    queue->put(tube => 't', data => 'x', domain => 'abc', inspect => 1);
+    queue->put(tube => 't', data => 3, domain => 'abc');
+    queue->put(tube => 't', data => 4, domain => 'abc');
+
 =back
 
 Methods L</put> (L</urgent>) use these parameters if they
@@ -170,7 +189,7 @@ sub _producer_messagepack {
 
     $method = $alias->{$method} if exists $alias->{$method};
 
-    _check_opts $o, qw(space tube delay ttl ttr pri data domain);
+    _check_opts $o, qw(space tube delay ttl ttr pri data domain inspect);
     
     my $tube = $o->{tube};
     $tube  = $self->tube unless defined $tube;

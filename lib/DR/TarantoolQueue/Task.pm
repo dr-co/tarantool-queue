@@ -38,6 +38,8 @@ has data    => (
 );
 has domain  =>  is => 'ro', isa => 'Maybe[Str]';
 
+has options => is => 'ro', isa => 'HashRef', default => sub {{}};
+
 has queue   => (is => 'ro', isa => 'Object|Undef', weak_ref => 1);
 
 with 'DR::TarantoolQueue::JSE';
@@ -92,6 +94,7 @@ sub tuple_messagepack {
         status  => $tuple->{status},
         rawdata => $tuple->{data},
         domain  => $tuple->{domain},
+        options => $tuple->{options} // {},
         queue   => $queue,
         space   => 'MegaQueue',
     );

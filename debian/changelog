@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.51) nowtaxi; urgency=medium
+
+  * Add inspect flag to queue->put.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Wed, 22 Aug 2018 13:03:50 +0300
+
 dr-tarantool-queue (0.50) nowtaxi; urgency=medium
 
   * Fix tuple size error.
