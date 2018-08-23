@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.52) nowtaxi; urgency=medium
+
+  * Domain index uses pri/id fields. 
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Thu, 23 Aug 2018 18:27:04 +0300
+
 dr-tarantool-queue (0.51) nowtaxi; urgency=medium
 
   * Add inspect flag to queue->put.
