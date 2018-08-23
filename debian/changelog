@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.54) nowtaxi; urgency=medium
+
+  * Don't spam by process fibers. 
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Thu, 23 Aug 2018 22:00:58 +0300
+
 dr-tarantool-queue (0.53) nowtaxi; urgency=medium
 
   * Domain index is global. 
