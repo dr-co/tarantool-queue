@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.53) nowtaxi; urgency=medium
+
+  * Domain index is global. 
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Thu, 23 Aug 2018 21:46:08 +0300
+
 dr-tarantool-queue (0.52) nowtaxi; urgency=medium
 
   * Domain index uses pri/id fields. 

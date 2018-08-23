@@ -74,15 +74,15 @@ for my $coro (0, 1) {
 
     for my $tube (tube_name) {
         note 'domain';
-        my $task = $q->put(tube => $tube, domain => 'Vasya');
+        my $task = $q->put(tube => $tube, domain => 'Vasya' . $coro);
         ok $task => 'Task was put';
         is $task->status, 'ready', 'status';
-        is $task->domain, 'Vasya', 'domain';
+        is $task->domain, "Vasya$coro", 'domain';
 
-        my $wait = $q->put(tube => $tube, domain => 'Vasya');
+        my $wait = $q->put(tube => $tube, domain => 'Vasya' . $coro);
         ok $wait => 'Task 2 was put';
         is $wait->status, 'wait', 'status is wait';
-        is $wait->domain, 'Vasya', 'domain';
+        is $wait->domain, "Vasya$coro", 'domain';
     }
 
     for my $tube (tube_name) {
