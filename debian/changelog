@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.55) nowtaxi; urgency=medium
+
+  * opts.inspect tasks don't break statistics.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Sat, 25 Aug 2018 14:39:33 +0300
+
 dr-tarantool-queue (0.54) nowtaxi; urgency=medium
 
   * Don't spam by process fibers. 
