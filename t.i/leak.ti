@@ -1,0 +1,106 @@
+#!/usr/bin/perl
+# vim: set ft=perl :
+
+use warnings;
+use strict;
+use utf8;
+use open qw(:std :utf8);
+use lib qw(lib ../lib t/lib);
+
+use Test::More tests    => 1;
+use Encode qw(decode encode);
+
+
+BEGIN {
+    use_ok 'EV';
+    use_ok 'Coro';
+    use_ok 'AnyEvent';
+    use_ok 'Coro::AnyEvent';
+    use_ok 'DR::Tnt::Test';
+    use_ok 'DR::TarantoolQueue';
+}
+
+
+my $t = start_tarantool
+    -port   => free_port,
+    -lua    => 't.i/lua/queue.lua',
+;
+
+ok $t->is_started, 'queue started';
+    
+
+my %ccfg = (
+    host        => '127.0.0.1',
+    port        => $t->port,
+    user        => 'test',
+    password    => 'test',
+    msgpack     => 1,
+    coro        => 1,
+
+    tube        => 'test_tube',
+
+    ttl         => 60,
+
+    defaults    => {
+        test_tube   => {
+            ttl         => 80
+        }
+    },
+
+    fake_in_test    => 0,
+);
+my $q = DR::TarantoolQueue->new(%ccfg);
+
+ok $q->tnt->ping, 'ping';
+isa_ok $q->tnt, 'DR::Tnt::Client::Coro', 'async variant';
+
+
+my ($put, $taken, $prev_taken, $take) = (0, 0, 0, 0);
+my $count = 0;
+my $time = AnyEvent::now();
+for (1 .. 100) {
+    async {
+        while () {
+            my $t = $q->take(tube => 'a', timeout => .1);
+            $take++;
+            next unless $t;
+            $t->ack;
+            $taken++;
+
+            my $now = AnyEvent::now();
+            if ($now - $time > 1) {
+                printf "%s %s (dbsize=%s, requests=%s) %3.2f rps\n",
+                    $put,
+                    $taken,
+                    $put - $taken,
+                    $take,
+
+                    ($taken - $prev_taken) / ($now - $time);
+
+                $prev_taken = $taken;
+                $time = $now;
+
+                $count++;
+            }
+
+            if ($count > 20) {
+                print "refresh session (reconnect)\n";
+                $count = 0;
+                my $qn = DR::TarantoolQueue->new(%ccfg);
+                ok $q->tnt->ping, 'ping';
+                $q = $qn;
+            }
+        }
+    }
+}
+
+for (1 .. 20) {
+    async {
+        while() {
+            $q->put(tube => 'a', data => 'b');
+            $put++;
+        }
+    }
+}
+
+Coro::schedule;
