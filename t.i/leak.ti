@@ -61,15 +61,17 @@ my $time = AnyEvent::now();
 for (1 .. 100) {
     async {
         while () {
-            my $t = $q->take(tube => 'a', timeout => .1);
+            my $ts = $q->take(tube => 'a', timeout => 1.2);
             $take++;
-            next unless $t;
-            $t->ack;
+            next unless $ts;
+            $ts->ack;
             $taken++;
 
             my $now = AnyEvent::now();
             if ($now - $time > 1) {
-                printf "%s %s (dbsize=%s, requests=%s) %3.2f rps\n",
+                printf "%s[%s]: %s %s (dbsize=%s, requests=%s) %3.2f rps\n",
+                    $$,
+                    $t->port,
                     $put,
                     $taken,
                     $put - $taken,
@@ -83,13 +85,13 @@ for (1 .. 100) {
                 $count++;
             }
 
-            if ($count > 20) {
-                print "refresh session (reconnect)\n";
-                $count = 0;
-                my $qn = DR::TarantoolQueue->new(%ccfg);
-                ok $q->tnt->ping, 'ping';
-                $q = $qn;
-            }
+#             if ($count > 20) {
+#                 print "refresh session (reconnect)\n";
+#                 $count = 0;
+#                 my $qn = DR::TarantoolQueue->new(%ccfg);
+#                 ok $q->tnt->ping, 'ping';
+#                 $q = $qn;
+#             }
         }
     }
 }
