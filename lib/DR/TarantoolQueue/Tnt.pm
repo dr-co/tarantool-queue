@@ -38,6 +38,8 @@ has _fake_msgpack_tnt =>
 
             unless ($t->is_started) {
                 $log = $t->log;
+                $t->stop;
+                next;
             }
             return $t;
         }
