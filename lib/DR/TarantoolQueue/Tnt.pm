@@ -18,27 +18,31 @@ has _fake_msgpack_tnt =>
 
         require DR::Tnt::Test;
 
-        my $t = DR::Tnt::Test::start_tarantool(
-            -port       => DR::Tnt::Test::free_port(),
-            -make_lua   => q{
-                require('log').info('Fake Queue starting')
-                box.cfg{
-                    listen      = os.getenv('PRIMARY_PORT'),
-                    readahead   = 101024
+        my $log;
+        for (1 .. 10) {
+            my $t = DR::Tnt::Test::start_tarantool(
+                -port       => DR::Tnt::Test::free_port(),
+                -make_lua   => q{
+                    require('log').info('Fake Queue starting')
+                    box.cfg{
+                        listen      = os.getenv('PRIMARY_PORT'),
+                        readahead   = 101024
+                    }
+                    box.schema.user.create('test', { password = 'test' })
+                    box.schema.user.grant('test', 'read,write,execute', 'universe')
+                    _G.queue = require('megaqueue')
+                    queue:init()
+                    require('log').info('Fake Queue started')
                 }
-                box.schema.user.create('test', { password = 'test' })
-                box.schema.user.grant('test', 'read,write,execute', 'universe')
-                _G.queue = require('megaqueue')
-                queue:init()
-                require('log').info('Fake Queue started')
-            }
-        );
+            );
 
-        unless ($t->is_started) {
-            warn $t->log;
-            die "Can't start fake tarantool\n";
+            unless ($t->is_started) {
+                $log = $t->log;
+            }
+            return $t;
         }
-        return $t;
+        warn $log if $log;
+        die "Can't start fake tarantool\n";
     };
 
 has _fake_lts_tnt =>

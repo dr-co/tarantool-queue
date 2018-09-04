@@ -6,7 +6,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
-use constant PLAN   => 129;
+use constant PLAN   => 139;
 use Test::More;
 use Encode qw(decode encode);
 use feature 'state';
@@ -189,10 +189,16 @@ for my $coro (0, 1) {
 
     note 'stats';
     is_deeply $q->statistics(tube => 'unknown'), {}, 'unknown tube statistics';
-    is_deeply $q->statistics(tube => 'test_tube_01'),
-        { test_tube_01 => { ready => 1 } },
-        'first test tube';
-
+    for my $s ($q->statistics(tube => 'test_tube_01')) {
+        isa_ok $s => 'HASH';
+        ok exists $s->{test_tube_01}, 'stat';
+        is keys(%$s), 1, 'one key';
+        isa_ok $s->{test_tube_01}, 'HASH';
+        ok $s->{test_tube_01}{time}, 'time';
+        delete $s->{test_tube_01}{time};
+        is_deeply $s, { test_tube_01 => { ready => 1 } },
+            'first test tube';
+    }
 
 }
 

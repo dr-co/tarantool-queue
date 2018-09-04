@@ -1,3 +1,9 @@
+dr-tarantool-queue (0.56) nowtaxi; urgency=medium
+
+  * try restart queue in tests several times.
+
+ -- Dmitry E. Oboukhov <unera@debian.org>  Tue, 04 Sep 2018 12:51:33 +0300
+
 dr-tarantool-queue (0.55) nowtaxi; urgency=medium
 
   * opts.inspect tasks don't break statistics.
